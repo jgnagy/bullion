@@ -44,6 +44,18 @@ Whether run locally or via Docker, the following environment variables configure
 | `MAX_THREADS` | `32` | Maximum number of [Puma](https://puma.io/) threads for processing requests. |
 | `RACK_ENV` | `production`* | When run via Docker, the default is `production`, when run via `rake local_demo` it is `development`. Used to tell Bullion if it is run in development mode or for testing. |
 
+### Integrating
+
+Any client that speaks the [ACMEv2](https://tools.ietf.org/html/rfc8555) protocol can be pointed at `/acme/directory` and everything else can be auto-discovered.
+
+Bullion also supports a non-standard directory option `caBundle` (which directs clients to `/acme/cabundle`) that responds with Bullion's PEM-encoded public key. Trusting this should automatically trust certificates signed by Bullion (eliminating browser messages about untrusted/unverified certificates).
+
+### Monitoring
+
+Bullion provides a `/ping` endpoint that should respond with `{ 'status': 'up' }` when Bullion is functional and ready to receive requests.
+
+Prometheus metrics are also scrapable at `/metrics`. This includes typical web request information as well as latencies related to the different Challenge types.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

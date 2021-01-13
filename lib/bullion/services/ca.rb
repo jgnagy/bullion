@@ -66,6 +66,13 @@ module Bullion
         halt 200
       end
 
+      # Non-standard endpoint that returns the CA bundle for Bullion
+      # Trusting this bundle should be sufficient to trust all Bullion-issued certs
+      options '/cabundle' do
+        @allowed_types = ['GET']
+        halt 200
+      end
+
       # The directory is used to find all required URLs for the ACME endpoints
       # @see https://tools.ietf.org/html/rfc8555#section-7.1.1
       get '/directory' do
@@ -80,6 +87,15 @@ module Bullion
           # non-standard entries:
           caBundle: uri('/cabundle')
         }.to_json
+      end
+
+      # Responds with Bullion's PEM-encoded public cert
+      get '/cabundle' do
+        expires 3600 * 48, :public, :must_revalidate
+        content_type 'application/x-pem-file'
+
+        attachment 'cabundle.pem'
+        Bullion.ca_cert.to_pem
       end
 
       # Retrieves a Nonce via a HEAD request

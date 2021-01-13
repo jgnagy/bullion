@@ -75,9 +75,10 @@ module Bullion
   # @see https://support.apple.com/en-us/HT211025
   def self.validate_config!
     raise ConfigError, 'Invalid Key Passphrase' unless CA_SECRET.is_a?(String)
-    raise ConfigError, 'Invalid Key Path' unless File.readable?(CA_KEY_PATH)
-    raise ConfigError, 'Invalid Cert Path' unless File.readable?(CA_CERT_PATH)
+    raise ConfigError, "Invalid Key Path: #{CA_KEY_PATH}" unless File.readable?(CA_KEY_PATH)
+    raise ConfigError, "Invalid Cert Path: #{CA_CERT_PATH}" unless File.readable?(CA_CERT_PATH)
     raise ConfigError, 'Cert Validity Too Long' if CERT_VALIDITY_DURATION > 60 * 60 * 24 * 397
+    raise ConfigError, 'Cert Validity Too Short' if CERT_VALIDITY_DURATION < 60 * 60 * 24 * 2
   end
 end
 

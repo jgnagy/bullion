@@ -1,7 +1,15 @@
----
 sudo: false
 language: ruby
 cache: bundler
 rvm:
-  - 2.6.5
-before_install: gem install bundler -v 1.17.3
+- 2.6.6
+before_install: gem install bundler -v 2.1.4
+deploy:
+  provider: rubygems
+  api_key:
+    secure: O+fa5Rhy0D3DDpkWZhO3XRLCsHr6O7lqkFr2J4dPgWLjbO5H9m7IXAcATxTVkrndmRygQ5xWoc3aX/gxu7FjGfy810qAAD5MXorS3ZB8PXYloCDmIteo6FA+iYuMiDOi4YnIc2NmkwDbhdbqRRHuS5wO0aHTpJAw4WRnlJXJXP++qeQZ8SRSo2yOznue/XqvzQrjSFoNhyMRVkRmaKSl1AE02/dpN88RTEGWMAJ2CNqNoP9bJ6je2zV9oNAKWySJi3DcfNoie7Xlcb/Oqn9ebk8NR/+2xVgqyUtQZ46fZNX37y8iaSTdjsJeH2VFb1VdOqHmHKhKCliT7HPZ3son+SENpygLmUZuvbUIg5svYrxK188nbqq41SbLfJxhEB9MUUj240oGgHsoYbROjWtlbhRYzzTxv5bHkl3oq2eKBFVENgNQdix6XiOguivW2VNdXP8pa7ZUJBkCqEPiJIbzRr1bHCPzqhRtyTFf1DuECwipRNd5qkiZUIlEKf+Gz/6S/+IxUVQI5SwI1hQEM/25R8hu7rIL5NwMktTPfGnG4QTyqHBjgGcs6ID4/sYDG35uGxGFR0mf6yEoeu7fOgyrs0V++m4wI9Idppz+5TyeV114SaGs1R5UJsQ+vzvRYjE62KNpbq58HyBDOp79R9str3KDESpObe60mNQLWBf7ob0=
+  gem: bullion
+  on:
+    tags: true
+    repo: jgnagy/bullion
+  skip_cleanup: 'true'

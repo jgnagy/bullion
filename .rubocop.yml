@@ -1,0 +1,31 @@
+Layout/LineLength:
+  Max: 100
+
+AllCops:
+  Exclude:
+    - 'spec/**/*_spec.rb'
+    - 'db/schema.rb'
+  TargetRubyVersion: 2.6
+  NewCops: enable
+
+Metrics/AbcSize:
+  Max: 21
+
+Metrics/BlockLength:
+  Max: 30
+  Exclude:
+  - 'Rakefile'
+  - '*.gemspec'
+
+Metrics/MethodLength:
+  Max: 20
+
+Metrics/ModuleLength:
+  Max: 150
+
+Metrics/ClassLength:
+  Max: 250
+
+Style/StringConcatenation:
+  Exclude:
+  - 'Rakefile'

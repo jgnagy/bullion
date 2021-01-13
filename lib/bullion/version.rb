@@ -1,3 +1,9 @@
+# frozen_string_literal: true
+
 module Bullion
-  VERSION = "0.1.0"
+  VERSION = [
+    0, # major
+    1, # minor
+    0 # patch
+  ].join('.')
 end

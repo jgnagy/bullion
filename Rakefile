@@ -62,8 +62,6 @@ task :prep do
   File.open(File.join(File.expand_path('.'), 'tmp', 'tls.crt'), 'w') do |f|
     f.write root_ca.to_pem
   end
-
-  FileUtils.rm_f('vendor/bundle/ruby/2.*/gems/yard-0*/.rubocop.yml')
 end
 
 task :demo do

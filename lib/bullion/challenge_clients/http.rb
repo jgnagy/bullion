@@ -16,9 +16,9 @@ module Bullion
             verify: false,
             headers: { 'User-Agent' => "Bullion/#{Bullion::VERSION}" }
           ).body
-                   rescue SocketError
-                     LOGGER.debug "Failed to connect to #{challenge_url}"
-                     ''
+        rescue SocketError
+          LOGGER.debug "Failed to connect to #{challenge_url}"
+          ''
         end
 
         token, thumbprint = response.split('.')

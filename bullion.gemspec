@@ -47,5 +47,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'rubocop',             '~> 0.93'
   spec.add_development_dependency 'simplecov',           '~> 0.20'
   spec.add_development_dependency 'simplecov-cobertura', '~> 1.4'
-  # spec.add_development_dependency 'yard',                '~> 0.9'
+  spec.add_development_dependency 'yard',                '~> 0.9'
 end

@@ -7,7 +7,7 @@ end
 require 'bundler/gem_tasks'
 require 'rspec/core/rake_task'
 require 'rubocop/rake_task'
-# require 'yard'
+require 'yard'
 require 'openssl'
 require 'sqlite3'
 require 'sinatra/activerecord/rake'
@@ -20,7 +20,7 @@ end
 
 RSpec::Core::RakeTask.new(:spec)
 RuboCop::RakeTask.new(:rubocop)
-# YARD::Rake::YardocTask.new
+YARD::Rake::YardocTask.new
 
 task :prep do
   FileUtils.mkdir_p(File.join(File.expand_path('.'), 'tmp'))

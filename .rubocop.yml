@@ -5,6 +5,7 @@ AllCops:
   Exclude:
     - 'spec/**/*_spec.rb'
     - 'db/schema.rb'
+    - 'vendor/**/*'
   TargetRubyVersion: 2.6
   NewCops: enable
 

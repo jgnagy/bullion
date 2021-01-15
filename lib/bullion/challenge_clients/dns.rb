@@ -26,22 +26,31 @@ module Bullion
         # Randomly select a nameserver to pull the TXT record
         nameserver = NAMESERVERS.sample
 
-        begin
-          records = Resolv::DNS.open(nameserver: nameserver) do |dns|
-            dns.getresources(
-              name,
-              Resolv::DNS::Resource::IN::TXT
-            )
+        records = records_for(name, nameserver)
+        record = records.map(&:strings).flatten.first
+        LOGGER.debug "Resolved #{name} to value #{record}"
+        record
+      rescue Resolv::ResolvError
+        msg = ["Resolution error for #{name}"]
+        msg << "via #{nameserver}" if nameserver
+        LOGGER.info msg.join(' ')
+        false
+      rescue StandardError => e
+        msg = ["Error '#{e.message}' for #{name}"]
+        msg << "with #{nameserver}" if nameserver
+        LOGGER.warn msg.join(' ')
+        false
+      end
+
+      def records_for(name, nameserver = nil)
+        if nameserver
+          Resolv::DNS.open(nameserver: nameserver) do |dns|
+            dns.getresources(name, Resolv::DNS::Resource::IN::TXT)
           end
-          record = records.map(&:strings).flatten.first
-          LOGGER.debug "Resolved #{name} to value #{record}"
-          record
-        rescue Resolv::ResolvError
-          LOGGER.info "Resolution error for #{name} via #{nameserver}"
-          false
-        rescue StandardError => e
-          LOGGER.warn "Error '#{e.message}' for #{name} with #{nameserver}"
-          false
+        else
+          Resolv::DNS.open do |dns|
+            dns.getresources(name, Resolv::DNS::Resource::IN::TXT)
+          end
         end
       end
     end

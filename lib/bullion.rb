@@ -51,7 +51,7 @@ module Bullion
     }
   DB_CONNECTION_SETTINGS.freeze
 
-  NAMESERVERS = ENV.fetch('DNS01_NAMESERVERS', '8.8.8.8').split(',')
+  NAMESERVERS = ENV.fetch('DNS01_NAMESERVERS', '').split(',')
 
   MetricsRegistry = Prometheus::Client.registry
 

@@ -1,0 +1,9 @@
+version: 1.0
+build:
+  image: docker:latest
+  scripts:
+  - ./scripts/build.sh
+test:
+  image: ruby:2.6
+  scripts:
+  - ./scripts/test.sh

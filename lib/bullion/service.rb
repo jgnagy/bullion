@@ -15,12 +15,13 @@ module Bullion
 
     before do
       # Sets up a useful variable (@json_body) for accessing a parsed request body
-      if request.content_type&.include?('json') && !request.body.to_s.empty?
+      if request.content_type&.include?("json") && !request.body.read.empty?
+        p request.body
         request.body.rewind
         @json_body = JSON.parse(request.body.read, symbolize_names: true)
       end
     rescue StandardError => e
-      halt(400, { error: "Request must be JSON: #{e.message}" }.to_json)
+      halt(400, { error: "Request must be JSON: #{e.message}}" }.to_json)
     end
   end
 end

@@ -1,4 +1,4 @@
-FROM ruby:2.6-alpine AS build
+FROM ruby:3.1-alpine AS build
 
 ENV RACK_ENV=development
 
@@ -17,7 +17,7 @@ RUN apk add build-base \
 
 WORKDIR /build
 
-FROM ruby:2.6-alpine
+FROM ruby:3.1-alpine
 LABEL maintainer="Jonathan Gnagy <jonathan.gnagy@gmail.com>"
 
 ENV BULLION_PORT=9292

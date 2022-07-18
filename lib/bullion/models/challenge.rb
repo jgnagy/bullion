@@ -17,16 +17,16 @@ module Bullion
       end
 
       def thumbprint
-        cipher = OpenSSL::Digest.new('SHA256')
+        cipher = OpenSSL::Digest.new("SHA256")
         cipher.hexdigest authorization.order.account.public_key.to_json
       end
 
       def client
         case acme_type
-        when 'dns-01'
-          ChallengeClients::DNS.new(self)
-        when 'http-01'
-          ChallengeClients::HTTP.new(self)
+        when "dns-01"
+          DNS_CHALLENGE_CLIENT.new(self)
+        when "http-01"
+          HTTP_CHALLENGE_CLIENT.new(self)
         else
           raise Bullion::Acme::Errors::UnsupportedChallengeType,
                 "Challenge type '#{acme_type}' is not supported by Bullion."

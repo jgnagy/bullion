@@ -5,7 +5,7 @@ module Bullion
   class ChallengeClient
     ChallengeClientMetric = Prometheus::Client::Histogram.new(
       :challenge_execution_seconds,
-      docstring: 'Challenge execution histogram in seconds',
+      docstring: "Challenge execution histogram in seconds",
       labels: %i[acme_type status]
     )
     MetricsRegistry.register(ChallengeClientMetric)
@@ -28,7 +28,7 @@ module Bullion
           success = perform
           if success
             LOGGER.info "Validated #{type} #{identifier}"
-            challenge.status = 'valid'
+            challenge.status = "valid"
             challenge.validated = Time.now
           else
             sleep rand(2..4)
@@ -38,7 +38,7 @@ module Bullion
 
       unless success
         LOGGER.info "Failed to validate #{type} #{identifier}"
-        challenge.status = 'invalid'
+        challenge.status = "invalid"
       end
 
       challenge.save
@@ -53,7 +53,7 @@ module Bullion
     # rubocop:enable Metrics/MethodLength
 
     def identifier
-      challenge.authorization.identifier['value']
+      challenge.authorization.identifier["value"]
     end
   end
 end

@@ -15,7 +15,7 @@ module Bullion
       # Delete old nonces
       def self.clean_up!
         # nonces older than this can safely be deleted
-        where('created_at < ?', Time.now - 86_400).delete_all
+        where("created_at < ?", Time.now - 86_400).delete_all
       end
     end
   end

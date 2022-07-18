@@ -11,7 +11,7 @@ module Bullion
       validates_presence_of :subject
 
       def init_values
-        self.serial ||= SecureRandom.hex(8).to_i(16)
+        self.serial ||= SecureRandom.hex(4).to_i(16)
       end
 
       def fingerprint
@@ -19,7 +19,7 @@ module Bullion
       end
 
       def cn
-        subject.split('/').select { |name| name =~ /^CN=/ }.first.split('=').last
+        subject.split("/").grep(/^CN=/).first.split("=").last
       end
 
       def self.from_csr(csr)

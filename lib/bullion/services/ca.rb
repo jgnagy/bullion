@@ -15,174 +15,174 @@ module Bullion
 
       after do
         if request.options?
-          @allowed_types ||= ['POST']
-          headers 'Access-Control-Allow-Methods' => @allowed_types
+          @allowed_types ||= ["POST"]
+          headers "Access-Control-Allow-Methods" => @allowed_types
         end
       end
 
-      options '/directory' do
-        @allowed_types = ['GET']
+      options "/directory" do
+        @allowed_types = ["GET"]
         halt 200
       end
 
-      options '/nonces' do
+      options "/nonces" do
         @allowed_types = %w[HEAD GET]
         halt 200
       end
 
-      options '/accounts' do
+      options "/accounts" do
         halt 200
       end
 
-      options '/accounts/:id' do
+      options "/accounts/:id" do
         halt 200
       end
 
-      options '/accounts/:id/orders' do
+      options "/accounts/:id/orders" do
         halt 200
       end
 
-      options '/orders' do
+      options "/orders" do
         halt 200
       end
 
-      options '/orders/:id' do
+      options "/orders/:id" do
         halt 200
       end
 
-      options '/orders/:id/finalize' do
+      options "/orders/:id/finalize" do
         halt 200
       end
 
-      options '/authorizations/:id' do
+      options "/authorizations/:id" do
         halt 200
       end
 
-      options '/challenges/:id' do
+      options "/challenges/:id" do
         halt 200
       end
 
-      options '/certificates/:id' do
+      options "/certificates/:id" do
         halt 200
       end
 
       # Non-standard endpoint that returns the CA bundle for Bullion
       # Trusting this bundle should be sufficient to trust all Bullion-issued certs
-      options '/cabundle' do
-        @allowed_types = ['GET']
+      options "/cabundle" do
+        @allowed_types = ["GET"]
         halt 200
       end
 
       # The directory is used to find all required URLs for the ACME endpoints
       # @see https://tools.ietf.org/html/rfc8555#section-7.1.1
-      get '/directory' do
-        content_type 'application/json'
+      get "/directory" do
+        content_type "application/json"
 
         {
-          newNonce: uri('/nonces'),
-          newAccount: uri('/accounts'),
-          newOrder: uri('/orders'),
-          revokeCert: uri('/revokecert'),
-          keyChange: uri('/keychanges'),
+          newNonce: uri("/nonces"),
+          newAccount: uri("/accounts"),
+          newOrder: uri("/orders"),
+          revokeCert: uri("/revokecert"),
+          keyChange: uri("/keychanges"),
           # non-standard entries:
-          caBundle: uri('/cabundle')
+          caBundle: uri("/cabundle")
         }.to_json
       end
 
       # Responds with Bullion's PEM-encoded public cert
-      get '/cabundle' do
+      get "/cabundle" do
         expires 3600 * 48, :public, :must_revalidate
-        content_type 'application/x-pem-file'
+        content_type "application/x-pem-file"
 
-        attachment 'cabundle.pem'
+        attachment "cabundle.pem"
         Bullion.ca_cert.to_pem
       end
 
       # Retrieves a Nonce via a HEAD request
       # @see https://tools.ietf.org/html/rfc8555#section-7.2
-      head '/nonces' do
-        add_acme_headers @new_nonce, additional: { 'Cache-Control' => 'no-store' }
+      head "/nonces" do
+        add_acme_headers @new_nonce, additional: { "Cache-Control" => "no-store" }
 
         halt 200
       end
 
       # Retrieves a Nonce via a GET request
       # @see https://tools.ietf.org/html/rfc8555#section-7.2
-      get '/nonces' do
-        add_acme_headers @new_nonce, additional: { 'Cache-Control' => 'no-store' }
+      get "/nonces" do
+        add_acme_headers @new_nonce, additional: { "Cache-Control" => "no-store" }
 
         halt 204
       end
 
       # Creates an account or verifies that an account exists
       # @see https://tools.ietf.org/html/rfc8555#section-7.3
-      post '/accounts' do
+      post "/accounts" do
         header_data = JSON.parse(Base64.decode64(@json_body[:protected]))
         begin
-          parse_acme_jwt(header_data['jwk'], validate_nonce: false)
+          parse_acme_jwt(header_data["jwk"], validate_nonce: false)
 
           validate_account_data(@payload_data)
         rescue Bullion::Acme::Error => e
-          content_type 'application/problem+json'
+          content_type "application/problem+json"
           halt 400, { type: e.acme_error, detail: e.message }.to_json
         end
 
         user = Models::Account.where(
-          public_key: header_data['jwk']
+          public_key: header_data["jwk"]
         ).first
 
-        if @payload_data['onlyReturnExisting']
-          content_type 'application/problem+json'
-          halt 400, { type: 'urn:ietf:params:acme:error:accountDoesNotExist' }.to_json unless user
+        if @payload_data["onlyReturnExisting"]
+          content_type "application/problem+json"
+          halt 400, { type: "urn:ietf:params:acme:error:accountDoesNotExist" }.to_json unless user
         end
 
-        user ||= Models::Account.new(public_key: header_data['jwk'])
+        user ||= Models::Account.new(public_key: header_data["jwk"])
         user.tos_agreed = true
-        user.contacts = @payload_data['contact']
+        user.contacts = @payload_data["contact"]
         user.save
 
-        content_type 'application/json'
-        add_acme_headers @new_nonce, additional: { 'Location' => uri("/accounts/#{user.id}") }
+        content_type "application/json"
+        add_acme_headers @new_nonce, additional: { "Location" => uri("/accounts/#{user.id}") }
 
         halt 201, {
-          'status': user.tos_agreed? ? 'valid' : 'pending',
-          'contact': user.contacts,
-          'orders': uri("/accounts/#{user.id}/orders")
+          status: user.tos_agreed? ? "valid" : "pending",
+          contact: user.contacts,
+          orders: uri("/accounts/#{user.id}/orders")
         }.to_json
       end
 
       # Endpoint for updating accounts
       # @see https://tools.ietf.org/html/rfc8555#section-7.3.2
-      post '/accounts/:id' do
+      post "/accounts/:id" do
         parse_acme_jwt
 
         unless params[:id] == @user.id
-          content_type 'application/json'
+          content_type "application/json"
           add_acme_headers @new_nonce
 
-          halt 403, { error: 'Accounts can only view or update themselves' }.to_json
+          halt 403, { error: "Accounts can only view or update themselves" }.to_json
         end
 
-        content_type 'application/json'
+        content_type "application/json"
 
         {
-          'status': 'valid',
-          'orders': uri("/accounts/#{@user.id}/orders"),
-          'contact': @user.contacts
+          status: "valid",
+          orders: uri("/accounts/#{@user.id}/orders"),
+          contact: @user.contacts
         }.to_json
       end
 
-      post '/accounts/:id/orders' do
+      post "/accounts/:id/orders" do
         parse_acme_jwt
 
         unless params[:id] == @user.id
-          content_type 'application/json'
+          content_type "application/json"
           add_acme_headers @new_nonce
 
-          halt 403, { error: 'Accounts can only view or update themselves' }.to_json
+          halt 403, { error: "Accounts can only view or update themselves" }.to_json
         end
 
-        content_type 'application/json'
+        content_type "application/json"
         add_acme_headers @new_nonce
 
         {
@@ -192,22 +192,22 @@ module Bullion
 
       # Endpoint for creating new orders
       # @see https://tools.ietf.org/html/rfc8555#section-7.4
-      post '/orders' do
+      post "/orders" do
         parse_acme_jwt
 
         # Only identifiers of type "dns" are supported
-        identifiers = @payload_data['identifiers'].select { |i| i['type'] == 'dns' }
+        identifiers = @payload_data["identifiers"].select { |i| i["type"] == "dns" }
 
         validate_order(@payload_data)
 
         order = @user.start_order(
-          identifiers: identifiers,
-          not_before: @payload_data['notBefore'],
-          not_after: @payload_data['notAfter']
+          identifiers:,
+          not_before: @payload_data["notBefore"],
+          not_after: @payload_data["notAfter"]
         )
 
-        content_type 'application/json'
-        add_acme_headers @new_nonce, additional: { 'Location' => uri("/orders/#{order.id}") }
+        content_type "application/json"
+        add_acme_headers @new_nonce, additional: { "Location" => uri("/orders/#{order.id}") }
 
         halt 201, {
           status: order.status,
@@ -219,15 +219,15 @@ module Bullion
           finalize: uri("/orders/#{order.id}/finalize")
         }.to_json
       rescue Bullion::Acme::Error => e
-        content_type 'application/problem+json'
+        content_type "application/problem+json"
         halt 400, { type: e.acme_error, detail: e.message }.to_json
       end
 
       # Retrieve existing Orders
-      post '/orders/:id' do
+      post "/orders/:id" do
         parse_acme_jwt
 
-        content_type 'application/json'
+        content_type "application/json"
         add_acme_headers @new_nonce
 
         order = Models::Order.find(params[:id])
@@ -242,40 +242,43 @@ module Bullion
           finalize: uri("/orders/#{order.id}/finalize")
         }
 
-        data[:certificate] = uri("/certificates/#{order.certificate.id}") if order.status == 'valid'
+        data[:certificate] = uri("/certificates/#{order.certificate.id}") if order.status == "valid"
 
         data.to_json
+      rescue Bullion::Acme::Error => e
+        content_type "application/problem+json"
+        halt 400, { type: e.acme_error, detail: e.message }.to_json
       end
 
       # Submit an order for finalization/signing
       # @see https://tools.ietf.org/html/rfc8555#section-7.4
-      post '/orders/:id/finalize' do
+      post "/orders/:id/finalize" do
         parse_acme_jwt
 
-        content_type 'application/json'
-        add_acme_headers @new_nonce, additional: { 'Location' => uri("/orders/#{order.id}") }
+        order = Models::Order.find(params[:id])
 
-        raw_csr_data = Base64.urlsafe_decode64(@payload_data['csr'])
+        content_type "application/json"
+        add_acme_headers @new_nonce, additional: { "Location" => uri("/orders/#{order.id}") }
+
+        raw_csr_data = Base64.urlsafe_decode64(@payload_data["csr"])
         encoded_csr = Base64.encode64(raw_csr_data)
 
         csr_data = openssl_compat_csr(encoded_csr)
 
         csr = OpenSSL::X509::Request.new(csr_data)
 
-        order = Models::Order.find(params[:id])
-
-        unless validate_csr(csr) && validate_acme_csr(order, csr)
-          content_type 'application/problem+json'
+        unless validate_acme_csr(order, csr)
+          content_type "application/problem+json"
           halt 400, {
-            type: Bullion::Acme::Errors::BadCSR.new.acme_error,
-            detail: 'CSR failed validation'
+            type: Bullion::Acme::Errors::BadCsr.new.acme_error,
+            detail: "CSR failed validation"
           }.to_json
         end
 
-        cert_id = sign_csr(csr, @user.contacts.first, acme: true).last
+        cert_id = sign_csr(csr, @user.contacts.first).last
 
         order.certificate_id = cert_id
-        order.status = 'valid'
+        order.status = "valid"
         order.save
 
         data = {
@@ -288,17 +291,20 @@ module Bullion
           finalize: uri("/orders/#{order.id}/finalize")
         }
 
-        data[:certificate] = uri("/certificates/#{order.certificate.id}") if order.status == 'valid'
+        data[:certificate] = uri("/certificates/#{order.certificate.id}") if order.status == "valid"
 
         data.to_json
+      rescue Bullion::Acme::Error => e
+        content_type "application/problem+json"
+        halt 422, { type: e.acme_error, detail: e.message }.to_json
       end
 
       # Shows that the client controls the account private key
       # @see https://tools.ietf.org/html/rfc8555#section-7.5
-      post '/authorizations/:id' do
+      post "/authorizations/:id" do
         parse_acme_jwt
 
-        content_type 'application/json'
+        content_type "application/json"
         add_acme_headers @new_nonce
 
         authorization = Models::Authorization.find(params[:id])
@@ -314,27 +320,30 @@ module Bullion
             chash[:url] = uri("/challenges/#{c.id}")
             chash[:token] = c.token
             chash[:status] = c.status
-            chash[:validated] = c.validated if c.status == 'valid'
+            chash[:validated] = c.validated if c.status == "valid"
 
             chash
           end
         }
 
         data.to_json
+      rescue Bullion::Acme::Error => e
+        content_type "application/problem+json"
+        halt 422, { type: e.acme_error, detail: e.message }.to_json
       end
 
       # Starts server verification of a challenge (either HTTP call or DNS lookup)
       # @see https://tools.ietf.org/html/rfc8555#section-7.5.1
-      post '/challenges/:id' do
+      post "/challenges/:id" do
         parse_acme_jwt
 
-        content_type 'application/json'
+        content_type "application/json"
         add_acme_headers @new_nonce
 
         challenge = Models::Challenge.find(params[:id])
 
         # Oddly enough, cert-manager uses a GET request for retrieving Challenge info
-        challenge.client.attempt unless @parsed_body[:payload] == ''
+        challenge.client.attempt unless @json_body && @json_body[:payload] == ""
 
         data = {
           type: challenge.acme_type,
@@ -344,25 +353,32 @@ module Bullion
           url: uri("/challenges/#{challenge.id}")
         }
 
-        data[:validated] = challenge.validated if challenge.status == 'valid'
+        if challenge.status == "valid"
+          data[:validated] = challenge.validated
+          order = challenge.authorization.order
+          order.update!(status: "ready") unless order.status == "ready"
+        end
 
         data.to_json
+      rescue Bullion::Acme::Error => e
+        content_type "application/problem+json"
+        halt 422, { type: e.acme_error, detail: e.message }.to_json
       end
 
       # Retrieves a signed certificate
       # @see https://tools.ietf.org/html/rfc8555#section-7.4.2
-      post '/certificates/:id' do
+      post "/certificates/:id" do
         parse_acme_jwt
 
         order = Models::Order.where(certificate_id: params[:id]).first
-        if order && order.status == 'valid'
-          content_type 'application/pem-certificate-chain'
+        if order && order.status == "valid"
+          content_type "application/pem-certificate-chain"
 
           cert = Models::Certificate.find(params[:id])
 
           cert.data + Bullion.ca_cert.to_pem
         else
-          halt(422, { 'error': 'Order not valid' }.to_json)
+          halt(422, { error: "Order not valid" }.to_json)
         end
       end
     end

@@ -10,27 +10,27 @@ RSpec.describe Bullion::Models::Certificate do
     csr.version = 2
     csr.subject = OpenSSL::X509::Name.new(
       [
-        ['CN', 'foo.example.com', OpenSSL::ASN1::UTF8STRING]
+        ["CN", "foo.example.com", OpenSSL::ASN1::UTF8STRING]
       ]
     )
 
     csr.public_key = key.public_key
-    csr.sign(key, OpenSSL::Digest::SHA256.new)
+    csr.sign(key, OpenSSL::Digest.new("SHA256"))
     csr
   end
 
   subject do
     cert = Bullion::Models::Certificate.from_csr(csr)
     cert.data = csr.to_pem
-    cert.requester = 'testing123'
+    cert.requester = "testing123"
     cert
   end
 
-  it 'supports fingerprinting' do
+  it "supports fingerprinting" do
     expect(subject.fingerprint).to be_a(String)
   end
 
-  it 'supports looking up the CN after creation' do
-    expect(subject.cn).to eq('foo.example.com')
+  it "supports looking up the CN after creation" do
+    expect(subject.cn).to eq("foo.example.com")
   end
 end

@@ -20,7 +20,7 @@ module Bullion
         order.not_before = not_before if not_before
         order.not_after = not_after if not_after
         order.account = self
-        order.status = 'pending'
+        order.status = "pending"
         order.identifiers = identifiers
         order.save
 

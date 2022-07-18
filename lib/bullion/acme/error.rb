@@ -6,11 +6,11 @@ module Bullion
     class Error < Bullion::Error
       # @see https://tools.ietf.org/html/rfc8555#section-6.7
       def acme_type
-        'genericError'
+        "genericError"
       end
 
       def acme_preface
-        'urn:ietf:params:acme:error:'
+        "urn:ietf:params:acme:error:"
       end
 
       def acme_error
@@ -22,49 +22,49 @@ module Bullion
       # ACME exception for bad CSRs
       class BadCsr < Bullion::Acme::Error
         def acme_type
-          'badCSR'
+          "badCSR"
         end
       end
 
       # ACME exception for bad Nonces
       class BadNonce < Bullion::Acme::Error
         def acme_type
-          'badNonce'
+          "badNonce"
         end
       end
 
       # ACME exception for invalid contacts in accounts
       class InvalidContact < Bullion::Acme::Error
         def acme_type
-          'invalidContact'
+          "invalidContact"
         end
       end
 
       # ACME exception for invalid orders
       class InvalidOrder < Bullion::Acme::Error
         def acme_type
-          'invalidOrder'
+          "invalidOrder"
         end
       end
 
       # ACME exception for malformed requests
       class Malformed < Bullion::Acme::Error
         def acme_type
-          'malformed'
+          "malformed"
         end
       end
 
       # ACME exception for unsupported contacts in accounts
       class UnsupportedContact < Bullion::Acme::Error
         def acme_type
-          'unsupportedContact'
+          "unsupportedContact"
         end
       end
 
       # Non-standard exception for unsupported challenge types
       class UnsupportedChallengeType < Bullion::Acme::Error
         def acme_error
-          'urn:ietf:params:bullion:error:unsupportedChallengeType'
+          "urn:ietf:params:bullion:error:unsupportedChallengeType"
         end
       end
     end

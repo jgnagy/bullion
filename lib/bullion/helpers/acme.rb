@@ -17,7 +17,7 @@ module Bullion
 
         # check nonce
         if validate_nonce
-          nonce = Models::Nonce.where(token: @header_data['nonce']).first
+          nonce = Models::Nonce.where(token: @header_data["nonce"]).first
           raise Bullion::Acme::Errors::BadNonce unless nonce
 
           nonce.destroy
@@ -27,7 +27,7 @@ module Bullion
           @json_body[:protected],
           @json_body[:payload],
           @json_body[:signature]
-        ].join('.')
+        ].join(".")
 
         # Either use the provided key or find the current user's public key
         public_key = key || user_public_key
@@ -36,14 +36,14 @@ module Bullion
         compat_public_key = openssl_compat(public_key)
 
         # Validate the payload was signed with the private key for the public key
-        if @payload_data && @payload_data != ''
-          JWT.decode(jwt_data, compat_public_key, @header_data['alg'])
+        if @payload_data && @payload_data != ""
+          JWT.decode(jwt_data, compat_public_key, true, { algorithm: @header_data["alg"] })
         else
-          digest = digest_from_alg(@header_data['alg'])
+          digest = digest_from_alg(@header_data["alg"])
 
-          sig = if @header_data['alg'].downcase.start_with?('es')
+          sig = if @header_data["alg"].downcase.start_with?("es")
                   ecdsa_sig_to_der(signature)
-                elsif @header_data['alg'].downcase.start_with?('rs')
+                elsif @header_data["alg"].downcase.start_with?("rs")
                   Base64.urlsafe_decode64(signature)
                 end
 
@@ -65,7 +65,7 @@ module Bullion
       end
 
       def extract_payload_data
-        if @json_body[:payload] && @json_body[:payload] != ''
+        if @json_body[:payload] && @json_body[:payload] != ""
           JSON.parse(Base64.decode64(@json_body[:payload]))
         else
           @json_body[:payload]
@@ -73,52 +73,39 @@ module Bullion
       end
 
       def user_public_key
-        @user = if @header_data['kid']
-                  user_id = @header_data['kid'].split('/').last
+        @user = if @header_data["kid"]
+                  user_id = @header_data["kid"].split("/").last
                   return unless user_id
 
                   Models::Account.find(user_id)
                 else
-                  Models::Account.where(public_key: @header_data['jwk']).last
+                  Models::Account.where(public_key: @header_data["jwk"]).last
                 end
 
         @user.public_key
       end
 
-      def extract_csr_attrs(csr)
-        csr.attributes.select { |a| a.oid == 'extReq' }.map { |a| a.value.map(&:value) }
-      end
-
-      def extract_csr_sans(csr_attrs)
-        csr_attrs.flatten.select { |a| a.value.first.value == 'subjectAltName' }
-      end
-
-      def extract_csr_domains(csr_sans)
-        csr_decoded_sans = OpenSSL::ASN1.decode(csr_sans.first.value[1].value)
-        csr_decoded_sans.select { |v| v.tag == 2 }.map(&:value)
-      end
-
       # Validation helpers
 
       def validate_account_data(hash)
-        unless [true, false, nil].include?(hash['onlyReturnExisting'])
+        unless [true, false, nil].include?(hash["onlyReturnExisting"])
           raise Bullion::Acme::Errors::Malformed,
-                "Invalid onlyReturnExisting: #{hash['onlyReturnExisting']}"
+                "Invalid onlyReturnExisting: #{hash["onlyReturnExisting"]}"
         end
 
-        unless hash['contact'].is_a?(Array)
+        unless hash["contact"].is_a?(Array)
           raise Bullion::Acme::Errors::InvalidContact,
-                "Invalid contacts format: #{hash['contact'].class}, #{hash}"
+                "Invalid contacts format: #{hash["contact"].class}, #{hash}"
         end
 
-        unless hash['contact'].size.positive?
+        unless hash["contact"].size.positive?
           raise Bullion::Acme::Errors::InvalidContact,
-                'Empty contacts list'
+                "Empty contacts list"
         end
 
         # Contacts must be a valid email
         # TODO: find a better email verification approach
-        unless hash['contact'].reject { |c| c.match?(/^mailto:[a-zA-Z0-9@.+-]{3,}/) }.empty?
+        unless hash["contact"].grep_v(/^mailto:[a-zA-Z0-9@.+-]{3,}/).empty?
           raise Bullion::Acme::Errors::UnsupportedContact
         end
 
@@ -131,31 +118,34 @@ module Bullion
         csr_domains = extract_csr_domains(csr_sans)
         csr_cn = cn_from_csr(csr)
 
-        order_domains = order.identifiers.map { |i| i['value'] }
+        order_domains = order.identifiers.map { |i| i["value"] }
 
-        return false unless order.status == 'ready'
-        raise Bullion::Acme::Errors::BadCSR unless csr_domains.include?(csr_cn)
-        raise Bullion::Acme::Errors::BadCSR unless csr_domains.sort == order_domains.sort
+        # Make sure the CSR has a valid public key
+        raise Bullion::Acme::Errors::BadCsr unless csr.verify(csr.public_key)
+
+        return false unless order.status == "ready"
+        raise Bullion::Acme::Errors::BadCsr unless csr_domains.include?(csr_cn)
+        raise Bullion::Acme::Errors::BadCsr unless csr_domains.sort == order_domains.sort
 
         true
       end
 
       def validate_order(hash)
-        validate_order_nb_and_na(hash['notBefore'], hash['notAfter'])
+        validate_order_nb_and_na(hash["notBefore"], hash["notAfter"])
 
         # Don't approve empty orders
-        raise Bullion::Acme::Errors::InvalidOrder, 'Empty order!' if hash['identifiers'].empty?
+        raise Bullion::Acme::Errors::InvalidOrder, "Empty order!" if hash["identifiers"].empty?
 
-        order_domains = hash['identifiers'].select { |ident| ident['type'] == 'dns' }
+        order_domains = hash["identifiers"].select { |ident| ident["type"] == "dns" }
 
         # Don't approve an order with identifiers that _aren't_ of type 'dns'
-        unless hash['identifiers'] == order_domains
+        unless hash["identifiers"] == order_domains
           raise Bullion::Acme::Errors::InvalidOrder, 'Only type "dns" allowed'
         end
 
         # Extract domains that end with something in our allowed domains list
         valid_domains = order_domains.reject do |domain|
-          endings = CA_DOMAINS.select { |d| domain['value'].end_with?(d) }
+          endings = CA_DOMAINS.select { |d| domain["value"].end_with?(d) }
           endings.empty?
         end
 

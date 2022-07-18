@@ -10,25 +10,25 @@ module Bullion
       end
 
       before do
-        content_type 'application/json'
+        content_type "application/json"
 
         halt 403 unless request.get? || request.options?
 
         if request.get?
-          headers 'X-Frame-Options' => 'SAMEORIGIN'
-          headers 'X-XSS-Protection' => '1; mode=block'
+          headers "X-Frame-Options" => "SAMEORIGIN"
+          headers "X-XSS-Protection" => "1; mode=block"
         end
       end
 
       after do
-        headers 'Access-Control-Allow-Methods' => %w[GET] if request.options?
+        headers "Access-Control-Allow-Methods" => %w[GET] if request.options?
       end
 
-      get '/' do
+      get "/" do
         '{ "status": "up" }'
       end
 
-      options '/' do
+      options "/" do
         halt 200
       end
     end

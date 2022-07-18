@@ -63,7 +63,7 @@ GEM
       ast (~> 2.4.1)
     prometheus-client (2.1.0)
     puma (3.12.6)
-    rack (2.2.3)
+    rack (2.2.4)
     rack-protection (2.1.0)
       rack
     rack-test (0.8.3)

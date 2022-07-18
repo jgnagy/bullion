@@ -1,34 +1,25 @@
-FROM ruby:3.1-alpine AS build
+FROM ruby:3.1 AS build
 
 ENV RACK_ENV=development
 
 COPY . /build
 
-RUN apk --no-cache upgrade \
-    && apk --no-cache add git mariadb-client mariadb-connector-c \
-       runit sqlite-dev \
-    && apk --no-cache add --virtual build-dependencies \
-       build-base mariadb-dev
+RUN apt-get update && apt-get upgrade -y && apt-get install -y libsqlite3-dev sqlite3 curl libsodium-dev
 
-RUN apk add build-base \
-    && cd /build \
+RUN cd /build \
     && gem build bullion.gemspec \
     && mv bullion*.gem /bullion.gem
 
 WORKDIR /build
 
-FROM ruby:3.1-alpine
+FROM ruby:3.1
 LABEL maintainer="Jonathan Gnagy <jonathan.gnagy@gmail.com>"
 
 ENV BULLION_PORT=9292
 ENV BULLION_ENVIRONMENT=development
 ENV DATABASE_URL=sqlite3:///tmp/bullion.db
 
-RUN apk --no-cache upgrade \
-    && apk --no-cache add git mariadb-client mariadb-connector-c \
-       runit sqlite-dev \
-    && apk --no-cache add --virtual build-dependencies \
-       build-base mariadb-dev
+RUN apt-get update && apt-get upgrade -y && apt-get -y install libsqlite3-dev sqlite3 curl libsodium-dev
 
 RUN mkdir /app
 
@@ -47,8 +38,7 @@ RUN chmod +x /entrypoint.sh \
 
 WORKDIR /app
 
-RUN gem install bullion.gem \
-    && apk del build-dependencies
+RUN gem install bullion.gem
 
 USER nobody
 

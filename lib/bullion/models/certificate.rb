@@ -4,7 +4,7 @@ module Bullion
   module Models
     # SSL Certificate model
     class Certificate < ActiveRecord::Base
-      serialize :alternate_names
+      serialize :alternate_names, JSON
 
       after_initialize :init_values, unless: :persisted?
 

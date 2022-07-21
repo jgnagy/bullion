@@ -11,6 +11,13 @@ module Bullion
       validates :acme_type, inclusion: { in: %w[http-01 dns-01] }
       validates :status, inclusion: { in: %w[invalid pending processing valid] }
 
+      scope :dns01, -> { where(acme_type: "dns-01") }
+      scope :http01, -> { where(acme_type: "http-01") }
+
+      def identifier
+        authorization.identifier["value"]
+      end
+
       def init_values
         self.expires ||= Time.now + (60 * 60)
         self.token ||= SecureRandom.alphanumeric(48)

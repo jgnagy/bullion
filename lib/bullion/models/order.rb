@@ -4,7 +4,7 @@ module Bullion
   module Models
     # ACMEv2 Order model
     class Order < ActiveRecord::Base
-      serialize :identifiers, Array
+      serialize :identifiers, JSON
 
       after_initialize :init_values, unless: :persisted?
 

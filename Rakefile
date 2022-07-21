@@ -20,7 +20,14 @@ namespace :db do
   end
 end
 
-RSpec::Core::RakeTask.new(:spec)
+RSpec::Core::RakeTask.new(:spec) do |t|
+  t.exclude_pattern = "spec/integration/**{,/*/**}/*_spec.rb"
+  t.rspec_opts = "--require spec_helper"
+end
+RSpec::Core::RakeTask.new(:integration_testing) do |t|
+  t.pattern = "spec/integration/**{,/*/**}/*_spec.rb"
+  t.rspec_opts = "--require integration_helper"
+end
 RuboCop::RakeTask.new(:rubocop)
 YARD::Rake::YardocTask.new
 
@@ -64,7 +71,14 @@ task :prep do
 end
 
 task :demo do
-  system("rackup -D -P #{File.expand_path(".")}/tmp/daemon.pid")
+  rack_env = "test"
+  database_url = "sqlite3:#{File.expand_path(".")}/tmp/db/#{rack_env}.sqlite3"
+  system("RACK_ENV=\"#{rack_env}\" DATABASE_URL=\"#{database_url}\" bundle exec rake db:migrate")
+  system(
+    "RACK_ENV=\"#{rack_env}\" DATABASE_URL=\"#{database_url}\" " \
+    "LOG_LEVEL='#{ENV.fetch("LOG_LEVEL", "info")}' " \
+    "rackup -D -P #{File.expand_path(".")}/tmp/daemon.pid"
+  )
 end
 
 task :foreground_demo do
@@ -85,10 +99,11 @@ task :cleanup do
   end
 end
 
-Rake::Task["spec"].enhance(["cleanup"])
+Rake::Task["integration_testing"].enhance(["cleanup"])
 
-task default: %i[prep db:migrate demo spec rubocop]
+task test: %i[prep db:migrate spec demo integration_testing]
+task unit: %i[prep db:migrate spec]
 
-task test: %i[prep db:migrate demo spec]
+task default: %i[test rubocop yard]
 
 task local_demo: %i[prep db:migrate foreground_demo]

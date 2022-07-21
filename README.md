@@ -36,7 +36,7 @@ Whether run locally or via Docker, the following environment variables configure
 | `CA_CERT_PATH` | `$CA_DIR/tls.crt` | Public cert for Bullion. If Bullion is an intermediate CA, you'll want to include the root CA's public cert in this file as well the signed cert for Bullion. |
 | `CA_DOMAINS` | `example.com` | A comma-delimited list of domains for which Bullion will sign certificate requests. Subdomains are automatically allowed. Certificates containing other domains will be rejected. |
 | `CERT_VALIDITY_DURATION` | `7776000` | How long should issued certs be valid (in seconds)? Default is 90 days. |
-| `DATABASE_URL` | _None_ | **(Required)** A shorthand for telling Bullion how to connect to a database. Acceptable URLs will either being with `sqlite3:` or [`mysql2://`](https://github.com/brianmario/mysql2#using-active-records-database_url). |
+| `DATABASE_URL` | _None_ | **(Required)** A shorthand for telling Bullion how to connect to a database. Acceptable URLs will either begin with `sqlite3:` or [`mysql2://`](https://github.com/brianmario/mysql2#using-active-records-database_url). |
 | `DNS01_NAMESERVERS` | _None_ | A comma-delimited list of nameservers to use for resolving [DNS-01](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) challenges. Usually you'll want this to be set to your _internal_ nameservers so internal names resolve correctly. When not set, it'll use the host's DNS. |
 | `LOG_LEVEL` | `warn` | Log level for Bullion. Supported levels (starting with the noisiest) are debug, info, warn, error, and fatal. |
 | `BULLION_PORT` | `9292` | TCP port Bullion will listen on. |

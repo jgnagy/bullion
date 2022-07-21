@@ -91,9 +91,9 @@ RSpec.describe Bullion::Services::CA do
   end
 
   it "provides reasonable OPTIONS for /orders/:id" do
-    @acme_client.new_order(identifiers: ["bar.test.domain"])
-    order = Bullion::Models::Order.last
-    options "/orders/#{order.id}"
+    order = @acme_client.new_order(identifiers: ["bar.test.domain"])
+    order_id = order.url.split("/").last
+    options "/orders/#{order_id}"
     expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
@@ -101,9 +101,9 @@ RSpec.describe Bullion::Services::CA do
   end
 
   it "provides reasonable OPTIONS for /orders/:id/finalize" do
-    @acme_client.new_order(identifiers: ["bar.test.domain"])
-    order = Bullion::Models::Order.last
-    options "/orders/#{order.id}/finalize"
+    order = @acme_client.new_order(identifiers: ["bar.test.domain"])
+    order_id = order.url.split("/").last
+    options "/orders/#{order_id}/finalize"
     expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
@@ -111,9 +111,10 @@ RSpec.describe Bullion::Services::CA do
   end
 
   it "provides reasonable OPTIONS for /authorizations/:id" do
-    @acme_client.new_order(identifiers: ["bar.test.domain"])
-    authz = Bullion::Models::Authorization.last
-    options "/authorizations/#{authz.id}"
+    order = @acme_client.new_order(identifiers: ["bar.test.domain"])
+    authz = order.authorizations.first
+    authz_id = authz.url.split("/").last
+    options "/authorizations/#{authz_id}"
     expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
@@ -121,9 +122,11 @@ RSpec.describe Bullion::Services::CA do
   end
 
   it "provides reasonable OPTIONS for /challenges/:id" do
-    @acme_client.new_order(identifiers: ["bar.test.domain"])
-    chall = Bullion::Models::Challenge.last
-    options "/challenges/#{chall.id}"
+    order = @acme_client.new_order(identifiers: ["bar.test.domain"])
+    authz = order.authorizations.first
+    chall = authz.challenges.last
+    chall_id = chall.url.split("/").last
+    options "/challenges/#{chall_id}"
     expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort

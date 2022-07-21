@@ -1,17 +1,7 @@
 # frozen_string_literal: true
 
-require "simplecov"
 require "bundler/setup"
 require "acme-client"
-
-SimpleCov.formatter = SimpleCov::Formatter::MultiFormatter.new(
-  [SimpleCov::Formatter::HTMLFormatter]
-)
-
-SimpleCov.start do
-  add_filter "/spec/"
-  add_filter "/.bundle/"
-end
 
 require "rack/test"
 require "bullion"

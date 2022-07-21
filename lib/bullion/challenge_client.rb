@@ -53,7 +53,7 @@ module Bullion
     # rubocop:enable Metrics/MethodLength
 
     def identifier
-      challenge.authorization.identifier["value"]
+      challenge.identifier
     end
   end
 end

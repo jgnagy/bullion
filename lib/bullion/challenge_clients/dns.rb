@@ -23,28 +23,25 @@ module Bullion
         Base64.urlsafe_encode64(digest).sub(/[\s=]*\z/, "")
       end
 
-      def dns_value
-        name = "_acme-challenge.#{identifier}"
+      def dns_name
+        "_acme-challenge.#{identifier}"
+      end
 
+      def dns_value
         # Randomly select a nameserver to pull the TXT record
         nameserver = NAMESERVERS.sample
 
-        LOGGER.debug "Looking up #{name}"
-        records = records_for(name, nameserver)
-        raise "Failed to find records for #{name}" unless records
+        LOGGER.debug "Looking up #{dns_name}"
+        records = records_for(dns_name, nameserver)
+        raise "Failed to find records for #{dns_name}" unless records
 
         record = records.map(&:strings).flatten.first
-        LOGGER.debug "Resolved #{name} to value #{record}"
+        LOGGER.debug "Resolved #{dns_name} to value #{record}"
         record
-      rescue Resolv::ResolvError
-        msg = ["Resolution error for #{name}"]
+      rescue StandardError => e
+        msg = ["Resolution error '#{e.message}' for #{dns_name}"]
         msg << "via #{nameserver}" if nameserver
         LOGGER.info msg.join(" ")
-        false
-      rescue StandardError => e
-        msg = ["Error '#{e.message}' for #{name}"]
-        msg << "with #{nameserver}" if nameserver
-        LOGGER.warn msg.join(" ")
         false
       end
 

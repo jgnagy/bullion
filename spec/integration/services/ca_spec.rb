@@ -17,168 +17,21 @@ RSpec.describe Bullion::Services::CA do
     described_class
   end
 
-  let(:directory_response_body) do
+  let(:expected_directory) do
     {
-      "caBundle" => "http://example.org/cabundle",
-      "keyChange" => "http://example.org/keychanges",
-      "newAccount" => "http://example.org/accounts",
-      "newNonce" => "http://example.org/nonces",
-      "newOrder" => "http://example.org/orders",
-      "revokeCert" => "http://example.org/revokecert"
+      meta: nil,
+      new_nonce: URI("http://localhost:9292/acme/nonces"),
+      new_account: URI("http://localhost:9292/acme/accounts"),
+      new_order: URI("http://localhost:9292/acme/orders"),
+      revoke_certificate: URI("http://localhost:9292/acme/revokecert"),
+      key_change: URI("http://localhost:9292/acme/keychanges")
     }
   end
 
-  let(:directory_req_methods) do
-    %w[GET]
-  end
-
-  let(:nonce_req_methods) do
-    %w[GET HEAD].sort
-  end
-
-  let(:generic_req_methods) do
-    %w[POST]
-  end
-
-  it "provides reasonable OPTIONS for /directory" do
-    options "/directory"
-    expect(last_response).to be_ok
-    expect(
-      last_response.headers["Access-Control-Allow-Methods"].sort
-    ).to eq(directory_req_methods)
-  end
-
-  it "provides reasonable OPTIONS for /nonces" do
-    options "/nonces"
-    expect(last_response).to be_ok
-    expect(
-      last_response.headers["Access-Control-Allow-Methods"].sort
-    ).to eq(nonce_req_methods)
-  end
-
-  it "provides reasonable OPTIONS for /accounts" do
-    options "/accounts"
-    expect(last_response).to be_ok
-    expect(
-      last_response.headers["Access-Control-Allow-Methods"].sort
-    ).to eq(generic_req_methods)
-  end
-
-  it "provides reasonable OPTIONS for /accounts/:id" do
-    account_id = @acme_account.url.split("/").last
-    options "/accounts/#{account_id}"
-    expect(last_response).to be_ok
-    expect(
-      last_response.headers["Access-Control-Allow-Methods"].sort
-    ).to eq(generic_req_methods)
-  end
-
-  it "provides reasonable OPTIONS for /accounts/:id/orders" do
-    account_id = @acme_account.url.split("/").last
-    options "/accounts/#{account_id}/orders"
-    expect(last_response).to be_ok
-    expect(
-      last_response.headers["Access-Control-Allow-Methods"].sort
-    ).to eq(generic_req_methods)
-  end
-
-  it "provides reasonable OPTIONS for /orders" do
-    options "/orders"
-    expect(last_response).to be_ok
-    expect(
-      last_response.headers["Access-Control-Allow-Methods"].sort
-    ).to eq(generic_req_methods)
-  end
-
-  it "provides reasonable OPTIONS for /orders/:id" do
-    order = @acme_client.new_order(identifiers: ["bar.test.domain"])
-    order_id = order.url.split("/").last
-    options "/orders/#{order_id}"
-    expect(last_response).to be_ok
-    expect(
-      last_response.headers["Access-Control-Allow-Methods"].sort
-    ).to eq(generic_req_methods)
-  end
-
-  it "provides reasonable OPTIONS for /orders/:id/finalize" do
-    order = @acme_client.new_order(identifiers: ["bar.test.domain"])
-    order_id = order.url.split("/").last
-    options "/orders/#{order_id}/finalize"
-    expect(last_response).to be_ok
-    expect(
-      last_response.headers["Access-Control-Allow-Methods"].sort
-    ).to eq(generic_req_methods)
-  end
-
-  it "provides reasonable OPTIONS for /authorizations/:id" do
-    order = @acme_client.new_order(identifiers: ["bar.test.domain"])
-    authz = order.authorizations.first
-    authz_id = authz.url.split("/").last
-    options "/authorizations/#{authz_id}"
-    expect(last_response).to be_ok
-    expect(
-      last_response.headers["Access-Control-Allow-Methods"].sort
-    ).to eq(generic_req_methods)
-  end
-
-  it "provides reasonable OPTIONS for /challenges/:id" do
-    order = @acme_client.new_order(identifiers: ["bar.test.domain"])
-    authz = order.authorizations.first
-    chall = authz.challenges.last
-    chall_id = chall.url.split("/").last
-    options "/challenges/#{chall_id}"
-    expect(last_response).to be_ok
-    expect(
-      last_response.headers["Access-Control-Allow-Methods"].sort
-    ).to eq(generic_req_methods)
-  end
-
-  it "provides reasonable OPTIONS for /cabundle" do
-    options "/cabundle"
-    expect(last_response).to be_ok
-    expect(
-      last_response.headers["Access-Control-Allow-Methods"].sort
-    ).to eq(directory_req_methods)
-  end
-
-  it "allows access to the CA directory" do
-    get "/directory"
-
-    expect(last_response).to be_ok # 200 OK
-    expect(last_response.headers["X-Content-Type-Options"]).to eq("nosniff")
-    expect(JSON.parse(last_response.body)).to eq(directory_response_body)
-  end
-
-  it "provides access to the CA's public key bundle" do
-    get "/cabundle"
-
-    expect(last_response).to be_ok # 200 OK
-    expect(last_response.headers["X-Content-Type-Options"]).to eq("nosniff")
-    expect(last_response.body).to eq(
-      File.read(File.join(File.expand_path("."), "tmp", "tls.crt"))
-    )
-  end
-
-  it "provides usable nonces" do
-    get "/nonces"
-
-    expect(last_response.status).to be(204) # no content
-    expect(last_response.headers).to include("Replay-Nonce")
-    expect(last_response.headers["Replay-Nonce"]).to be_a(String)
-    expect(last_response.headers["Link"]).to eq('<http://example.org/directory>;rel="index"')
-    expect(last_response.headers["Cache-Control"]).to eq("no-store")
-    expect(last_response.headers["X-Content-Type-Options"]).to eq("nosniff")
-  end
-
-  it "provides usable nonces via HEAD requests" do
-    head "/nonces"
-
-    expect(last_response.status).to be(200) # no content
-    expect(last_response.headers).to include("Replay-Nonce")
-    expect(last_response.headers["Replay-Nonce"]).to be_a(String)
-    expect(last_response.headers["Link"]).to eq('<http://example.org/directory>;rel="index"')
-    expect(last_response.headers["Cache-Control"]).to eq("no-store")
-    expect(last_response.headers["X-Content-Type-Options"]).to eq("nosniff")
+  it "provides the expected directory contents" do
+    client_directory = @acme_client.instance_variable_get(:@directory)
+    internal_directory = client_directory.instance_variable_get(:@directory)
+    expect(internal_directory).to eq(expected_directory)
   end
 
   it "allows new client registrations" do

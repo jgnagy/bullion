@@ -1,20 +1,13 @@
 # frozen_string_literal: true
 
 RSpec.describe Bullion::Models::Account do
+  include BullionTest::Helpers
+
   describe "with valid input" do
     describe "with RSA keys" do
-      let(:public_key_hash) do
-        key = OpenSSL::PKey::RSA.new(2048)
-        stripped_key = key.public_key
-                          .to_pem
-                          .gsub("-----BEGIN CERTIFICATE REQUEST-----\n", "")
-                          .gsub("-----END CERTIFICATE REQUEST-----", "")
-        {
-          "e" => key.params["e"].to_s,
-          "kty" => "RSA",
-          "n" => stripped_key
-        }
-      end
+      let(:account_key) { rsa_key }
+
+      let(:public_key_hash) { rsa_public_key_hash(account_key) }
 
       let(:basic_account) do
         user_email = "john.doe@example.com"
@@ -39,25 +32,9 @@ RSpec.describe Bullion::Models::Account do
     end
 
     describe "with ECDSA keys" do
-      let(:public_key_hash) do
-        key = OpenSSL::PKey::EC.new("secp384r1")
-        key.generate_key
-        hex_key = key.public_key.to_bn.to_s(16)
-        hex_length = hex_key.size
-        hex_x = hex_key[2, (hex_length / 2)]
-        hex_y = hex_key[(2 + (hex_length / 2)), (hex_length / 2)]
-        x = Base64.urlsafe_encode64(
-          OpenSSL::BN.new([hex_x].pack("H*"), 2).to_s(2)
-        ).sub(/[\s=]*$/, "")
-        y = Base64.urlsafe_encode64(
-          OpenSSL::BN.new([hex_y].pack("H*"), 2).to_s(2)
-        ).sub(/[\s=]*$/, "")
-        {
-          "x" => x,
-          "y" => y,
-          "crv" => "P-256"
-        }
-      end
+      let(:account_key) { ecdsa_key("P-521") }
+
+      let(:public_key_hash) { ecdsa_public_key_hash(account_key, "P-521") }
 
       let(:basic_account) do
         user_email = "jane.doe@example.com"

@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    bullion (0.3.2)
+    bullion (0.3.3)
       httparty (~> 0.18)
       json (~> 2.6)
       jwt (~> 2.4)

@@ -1,25 +1,13 @@
 # frozen_string_literal: true
 
 RSpec.describe Bullion::Services::CA do
+  include BullionTest::Helpers
+
   def app
     described_class
   end
 
-  before(:all) do
-    @key = OpenSSL::PKey::RSA.new(2048)
-    @stripped_key = @key.public_key
-                        .to_pem
-                        .gsub("-----BEGIN CERTIFICATE REQUEST-----\n", "")
-                        .gsub("-----END CERTIFICATE REQUEST-----", "")
-  end
-
-  let(:public_key_hash) do
-    {
-      "e" => @key.params["e"].to_s,
-      "kty" => "RSA",
-      "n" => @stripped_key
-    }
-  end
+  let(:account_key) { rsa_key }
 
   let(:account_email) { "john.doe@example.com" }
 
@@ -27,11 +15,16 @@ RSpec.describe Bullion::Services::CA do
     Bullion::Models::Account.create(
       tos_agreed: true,
       contacts: [account_email],
-      public_key: public_key_hash
+      public_key: rsa_public_key_hash(account_key)
     )
   end
 
-  let(:identifiers) { ["a.test.domain", "other.test.domain"] }
+  let(:identifiers) do
+    [
+      { "type" => "dns", "value" => "a.test.domain" },
+      { "type" => "dns", "value" => "other.test.domain" }
+    ]
+  end
 
   let(:order) do
     Bullion::Models::Order.create!(
@@ -188,7 +181,7 @@ RSpec.describe Bullion::Services::CA do
   it "provides usable nonces" do
     get "/nonces"
 
-    expect(last_response.status).to be(204) # no content
+    expect(last_response.status).to eq(204) # no content
     expect(last_response.headers).to include("Replay-Nonce")
     expect(last_response.headers["Replay-Nonce"]).to be_a(String)
     expect(last_response.headers["Link"]).to eq('<http://example.org/directory>;rel="index"')
@@ -199,7 +192,7 @@ RSpec.describe Bullion::Services::CA do
   it "provides usable nonces via HEAD requests" do
     head "/nonces"
 
-    expect(last_response.status).to be(200) # no content
+    expect(last_response).to be_ok # no content
     expect(last_response.headers).to include("Replay-Nonce")
     expect(last_response.headers["Replay-Nonce"]).to be_a(String)
     expect(last_response.headers["Link"]).to eq('<http://example.org/directory>;rel="index"')
@@ -207,9 +200,183 @@ RSpec.describe Bullion::Services::CA do
     expect(last_response.headers["X-Content-Type-Options"]).to eq("nosniff")
   end
 
-  xit "allows new client registrations" do
-    expect(@acme_account.kid).to be_a(String)
-    expect(URI(@acme_account.kid)).to be_a(URI)
-    expect(URI(@acme_account.kid).path).to eq("/acme/accounts/1")
+  context "with RSA keys" do
+    it "allows new client registrations" do
+      jwk = {
+        typ: "JWT",
+        alg: "RS256",
+        jwk: rsa_public_key_hash(account_key)
+      }.to_json
+      encoded_jwk = acme_base64(jwk)
+      payload = {
+        contact: ["mailto:#{account_email}"]
+      }.to_json
+      encoded_payload = acme_base64(payload)
+      signature_data = "#{encoded_jwk}.#{encoded_payload}"
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_sign(account_key, signature_data)
+      }.to_json
+
+      post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(201)
+      expect(last_response.headers["Content-Type"] == "application/json")
+      expect(last_response.headers["Location"]).to match(%r{^http://.+/accounts/[0-9]+$})
+      expect(last_response.body).to be_a(String)
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["status"]).to eq("valid")
+      expect(parsed_body["contact"]).to eq(["mailto:#{account_email}"])
+      expect(parsed_body["orders"]).to match(%r{^http://.+/accounts/[0-9]+/orders$})
+    end
+
+    it "validates existing client registrations" do
+      account # need to create the account to use it
+
+      jwk = {
+        typ: "JWT",
+        alg: "RS256",
+        jwk: rsa_public_key_hash(account_key)
+      }.to_json
+      encoded_jwk = acme_base64(jwk)
+      payload = {
+        contact: ["mailto:#{account_email}"],
+        onlyReturnExisting: true
+      }.to_json
+      encoded_payload = acme_base64(payload)
+      signature_data = "#{encoded_jwk}.#{encoded_payload}"
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_sign(account_key, signature_data)
+      }.to_json
+
+      post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(201)
+      expect(last_response.headers["Content-Type"] == "application/json")
+      expect(last_response.headers["Location"]).to match(%r{^http://.+/accounts/[0-9]+$})
+      expect(last_response.body).to be_a(String)
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["status"]).to eq("valid")
+      expect(parsed_body["contact"]).to eq(["mailto:#{account_email}"])
+      expect(parsed_body["orders"]).to match(%r{http://.+/accounts/[0-9]+/orders})
+    end
+
+    it "validates acme account fields" do
+      jwk = {
+        typ: "JWT",
+        alg: "RS256",
+        jwk: rsa_public_key_hash(account_key)
+      }.to_json
+      encoded_jwk = acme_base64(jwk)
+      payload = {
+        contact: [account_email]
+      }.to_json
+      encoded_payload = acme_base64(payload)
+      signature_data = "#{encoded_jwk}.#{encoded_payload}"
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_sign(account_key, signature_data)
+      }.to_json
+
+      post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.headers["Content-Type"] == "application/json")
+      expect(last_response.body).to be_a(String)
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to eq("urn:ietf:params:acme:error:unsupportedContact")
+      expect(parsed_body["detail"]).to eq("Bullion::Acme::Errors::UnsupportedContact")
+    end
+
+    it "allows submitting new orders" do
+      account # need to create the account to use it
+
+      get "/nonces"
+
+      nonce = last_response.headers["Replay-Nonce"]
+
+      jwk = {
+        typ: "JWT",
+        alg: "RS256",
+        jwk: rsa_public_key_hash(account_key),
+        nonce:,
+        url: "/orders"
+      }.to_json
+      encoded_jwk = acme_base64(jwk)
+      payload = { identifiers:, }.to_json
+      encoded_payload = acme_base64(payload)
+      signature_data = "#{encoded_jwk}.#{encoded_payload}"
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_sign(account_key, signature_data)
+      }.to_json
+
+      post "/orders", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(201)
+      expect(last_response.headers["Content-Type"] == "application/json")
+      expect(last_response.headers["Location"]).to match(%r{^http://.+/orders/[0-9]+$})
+      expect(last_response.body).to be_a(String)
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["status"]).to eq("pending")
+      expect(parsed_body).to include("expires")
+      expect(parsed_body).to include("notBefore")
+      expect(parsed_body).to include("notAfter")
+      expect(parsed_body).to include("authorizations")
+      expect(parsed_body["authorizations"]).to be_an(Array)
+      expect(parsed_body["authorizations"].size).to eq(2)
+      expect(parsed_body["identifiers"]).to eq(identifiers)
+      expect(parsed_body["finalize"]).to match(%r{http://.+/orders/[0-9]+/finalize})
+    end
+  end
+
+  context "with ECDSA keys" do
+    it "allows new client registrations" do
+      account_key = ecdsa_key
+
+      jwk = {
+        typ: "JWT",
+        alg: "ES256",
+        jwk: ecdsa_public_key_hash(account_key)
+      }.to_json
+
+      encoded_jwk = acme_base64(jwk)
+      payload = {
+        contact: ["mailto:#{account_email}"]
+      }.to_json
+      encoded_payload = acme_base64(payload)
+      signature_data = "#{encoded_jwk}.#{encoded_payload}"
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_sign(account_key, signature_data)
+      }.to_json
+
+      post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(201)
+      expect(last_response.headers["Content-Type"] == "application/json")
+      expect(last_response.headers["Location"]).to match(%r{^http://.+/accounts/[0-9]+$})
+      expect(last_response.body).to be_a(String)
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["status"]).to eq("valid")
+      expect(parsed_body["contact"]).to eq(["mailto:#{account_email}"])
+      expect(parsed_body["orders"]).to match(%r{^http://.+/accounts/[0-9]+/orders$})
+    end
   end
 end

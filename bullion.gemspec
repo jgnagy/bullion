@@ -33,7 +33,7 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "openssl",              "~> 3.0"
   spec.add_runtime_dependency "prometheus-client",    "~> 4.0"
   spec.add_runtime_dependency "puma",                 "~> 5.6"
-  spec.add_runtime_dependency "sinatra",              "~> 2.2"
+  spec.add_runtime_dependency "sinatra",              ">= 2.2", "< 4.0"
   spec.add_runtime_dependency "sinatra-activerecord", "~> 2.0"
   spec.add_runtime_dependency "sinatra-contrib",      "~> 2.2"
   spec.add_runtime_dependency "sqlite3",              "~> 1.4"

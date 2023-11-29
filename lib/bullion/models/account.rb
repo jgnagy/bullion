@@ -4,8 +4,8 @@ module Bullion
   module Models
     # ACMEv2 Account model
     class Account < ActiveRecord::Base
-      serialize :contacts, JSON
-      serialize :public_key, JSON
+      serialize :contacts, coder: JSON
+      serialize :public_key, coder: JSON
 
       validates_uniqueness_of :public_key
 

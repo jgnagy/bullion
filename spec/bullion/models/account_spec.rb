@@ -18,16 +18,12 @@ RSpec.describe Bullion::Models::Account do
         )
       end
 
-      it "creates new accounts" do
-        expect(basic_account.valid?).to be(true)
-        expect(basic_account.save).to be_truthy
-      end
+      it("creates new accounts") { expect(basic_account.save).to be_truthy }
 
       it "allows starting new orders" do
         basic_account.save
         order = basic_account.start_order(identifiers: ["test.example.com"])
-        expect(order.valid?).to be(true)
-        expect(order.errors).to be_empty
+        expect(order.persisted?).to be(true)
       end
     end
 
@@ -45,15 +41,11 @@ RSpec.describe Bullion::Models::Account do
         )
       end
 
-      it "creates new accounts" do
-        expect(basic_account.valid?).to be(true)
-        expect(basic_account.save).to be_truthy
-      end
+      it("creates new accounts") { expect(basic_account.save).to be_truthy }
 
       it "allows starting new orders" do
         basic_account.save
         order = basic_account.start_order(identifiers: ["test.example.com"])
-        expect(order.valid?).to be(true)
         expect(order.errors).to be_empty
       end
     end

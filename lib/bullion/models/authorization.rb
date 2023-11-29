@@ -4,7 +4,7 @@ module Bullion
   module Models
     # ACMEv2 Authorization model
     class Authorization < ActiveRecord::Base
-      serialize :identifier, JSON
+      serialize :identifier, coder: JSON
 
       after_initialize :init_values, unless: :persisted?
 

@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 RSpec.describe Bullion::Models::Challenge do
+  subject do
+    authorization.challenges.first
+  end
+
   before(:all) do
     @acme_client_key ||= OpenSSL::PKey::RSA.new(2048)
     stripped_key = @acme_client_key.public_key
@@ -28,16 +32,15 @@ RSpec.describe Bullion::Models::Challenge do
     order.authorizations.first
   end
 
-  subject do
-    authorization.challenges.first
-  end
-
   it "automatically sets tokens" do
     expect(subject.token).to be_a(String)
   end
 
-  it "automatically sets expirations" do
+  it "automatically sets expirations that are of type Time" do
     expect(subject.expires).to be_a(Time)
+  end
+
+  it "automatically sets expirations in the future" do
     expect(subject.expires).to be > Time.now
   end
 

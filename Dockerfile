@@ -1,4 +1,4 @@
-FROM ruby:3.1 AS build
+FROM ruby:3.2 AS build
 
 ENV RACK_ENV=development
 
@@ -12,7 +12,7 @@ RUN cd /build \
 
 WORKDIR /build
 
-FROM ruby:3.1
+FROM ruby:3.2
 LABEL maintainer="Jonathan Gnagy <jonathan.gnagy@gmail.com>"
 
 ENV BULLION_PORT=9292

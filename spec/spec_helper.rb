@@ -57,8 +57,7 @@ module BullionTest
     end
 
     def ecdsa_key(crv = "P-256")
-      key = OpenSSL::PKey::EC.new(ecsda_crv_to_openssl(crv))
-      key.generate_key
+      key = OpenSSL::PKey::EC.generate(ecsda_crv_to_openssl(crv))
       @ecdsa_key ||= key
     end
 

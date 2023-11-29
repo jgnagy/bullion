@@ -10,8 +10,11 @@ stages:
     - ./scripts/test.sh
   release:
     image: ruby:3.2
+    only:
+    - main
+  publish:
+    image: docker:latest
     scripts:
-    - ./scripts/release.sh
     - ./scripts/publish.sh
     only:
     - main

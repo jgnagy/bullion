@@ -184,7 +184,7 @@ module Bullion
       def filter_sans(potential_sans)
         # Select only those that are part of the appropriate domain
         potential_sans.select do |alt|
-          CA_DOMAINS.filter_map { |domain| alt.end_with?(".#{domain}") }.any?
+          Bullion.config.ca.domains.filter_map { |domain| alt.end_with?(".#{domain}") }.any?
         end
       end
 

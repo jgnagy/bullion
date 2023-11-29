@@ -34,7 +34,7 @@ RSpec.describe Bullion::ChallengeClients::HTTP do
   end
 
   let(:challenge) do
-    authorization.challenges.http01.first
+    authorization.challenges.where(acme_type: "http-01").first
   end
 
   it "produces expected URLs" do

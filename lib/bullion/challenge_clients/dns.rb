@@ -5,9 +5,8 @@ module Bullion
     # ACME DNS01 Challenge Client
     # @see https://tools.ietf.org/html/rfc8555#section-8.4
     class DNS < ChallengeClient
-      def type
-        "DNS01"
-      end
+      def self.acme_type = "dns-01"
+      def type = "DNS01"
 
       def perform
         value = dns_value
@@ -29,7 +28,7 @@ module Bullion
 
       def dns_value
         # Randomly select a nameserver to pull the TXT record
-        nameserver = NAMESERVERS.sample
+        nameserver = Bullion.config.nameservers.sample
 
         LOGGER.debug "Looking up #{dns_name}"
         records = records_for(dns_name, nameserver)

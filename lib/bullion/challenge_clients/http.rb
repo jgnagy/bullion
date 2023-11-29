@@ -5,9 +5,8 @@ module Bullion
     # ACME HTTP01 Challenge Client
     # @see https://tools.ietf.org/html/rfc8555#section-8.3
     class HTTP < ChallengeClient
-      def type
-        "HTTP01"
-      end
+      def self.acme_type = "http-01"
+      def type = "HTTP01"
 
       def perform
         response = begin

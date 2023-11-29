@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 module Bullion
+  # Common helper functions
   module Helpers
     # ACME-specific helper functions
     module Acme
@@ -144,12 +145,9 @@ module Bullion
         end
 
         # Extract domains that end with something in our allowed domains list
-        valid_domains = order_domains.reject do |domain|
-          endings = CA_DOMAINS.select { |d| domain["value"].end_with?(d) }
-          endings.empty?
-        end
+        valid_domains = extract_valid_order_domains(order_domains)
 
-        # Only allow CA_DOMAINS domains...
+        # Only allow configured domains...
         unless order_domains == valid_domains
           raise(
             Bullion::Acme::Errors::InvalidOrder,
@@ -187,6 +185,12 @@ module Bullion
       # rubocop:enable Metrics/AbcSize
       # rubocop:enable Metrics/CyclomaticComplexity
       # rubocop:enable Metrics/PerceivedComplexity
+
+      def extract_valid_order_domains(order_domains)
+        order_domains.reject do |domain|
+          Bullion.config.ca.domains.none? { domain["value"].end_with?(_1) }
+        end
+      end
     end
   end
 end

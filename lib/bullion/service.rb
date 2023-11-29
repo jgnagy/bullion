@@ -10,7 +10,7 @@ module Bullion
       set :protection, except: :http_origin
       set :logging, true
       set :logger, Bullion::LOGGER
-      set :database, DB_CONNECTION_SETTINGS
+      set :database, Bullion.config.db_url
       set :show_exceptions, false
     end
 

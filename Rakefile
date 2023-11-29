@@ -94,7 +94,7 @@ desc "Cleans up test or demo environment"
 task :cleanup do
   at_exit do
     if File.exist?("#{File.expand_path(".")}/tmp/daemon.pid")
-      system("kill $(cat #{File.expand_path(".")}/tmp/daemon.pid)")
+      system("kill $(cat #{File.expand_path(".")}/tmp/daemon.pid) > /dev/null 2>&1")
     end
     FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "tls.crt"))
     FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "tls.key"))

@@ -34,7 +34,7 @@ RSpec.describe Bullion::ChallengeClients::DNS do
   end
 
   let(:challenge) do
-    authorization.challenges.dns01.first
+    authorization.challenges.where(acme_type: "dns-01").first
   end
 
   it "produces expected DNS record requests" do

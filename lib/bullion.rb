@@ -9,6 +9,7 @@ require "logger"
 require "openssl"
 
 # External requirements
+require "dry-configurable"
 require "sinatra/base"
 require "sinatra/contrib"
 require "sinatra/custom_logger"
@@ -20,50 +21,57 @@ require "httparty"
 
 # The top-level module for Bullion
 module Bullion
+  extend Dry::Configurable
+
   class Error < StandardError; end
   class ConfigError < Error; end
 
+  # Set up logging
   LOGGER = Logger.new($stdout)
-
-  # Config through environment variables
-  CA_DIR       = File.expand_path ENV.fetch("CA_DIR", "tmp")
-  CA_SECRET    = ENV.fetch("CA_SECRET", "SomeS3cret")
-  CA_KEY_PATH  = ENV.fetch("CA_KEY_PATH") { File.join(CA_DIR, "tls.key") }
-  CA_CERT_PATH = ENV.fetch("CA_CERT_PATH") { File.join(CA_DIR, "tls.crt") }
-  CA_DOMAINS   = ENV.fetch("CA_DOMAINS", "example.com").split(",")
-
-  # Set up log level
   LOGGER.level = ENV.fetch("LOG_LEVEL", :warn)
 
-  # 90 days cert expiration
-  CERT_VALIDITY_DURATION = Integer(
-    ENV.fetch("CERT_VALIDITY_DURATION", 60 * 60 * 24 * 30 * 3)
-  )
-
-  DB_CONNECTION_SETTINGS =
-    ENV.fetch("DATABASE_URL") do
-      {
-        adapter: "mysql2",
-        database: ENV.fetch("DB_NAME", "bullion"),
-        encoding: ENV.fetch("DB_ENCODING", "utf8mb4"),
-        pool: Integer(ENV.fetch("MAX_THREADS", 32)),
-        username: ENV.fetch("DB_USERNAME", "root"),
-        password: ENV.fetch("DB_PASSWORD", nil),
-        host: ENV.fetch("DB_HOST", "localhost")
+  setting :ca, reader: true do
+    setting :dir, default: "tmp", constructor: -> { File.expand_path(_1) }
+    setting :secret, default: "SomeS3cret"
+    setting(
+      :key_path,
+      default: "tls.key",
+      constructor: lambda { |v|
+        v.include?("/") ? File.expand_path(v) : File.join(Bullion.config.ca.dir, v)
       }
-    end
-  DB_CONNECTION_SETTINGS.freeze
+    )
+    setting(
+      :cert_path,
+      default: "tls.crt",
+      constructor: lambda { |v|
+        v.include?("/") ? File.expand_path(v) : File.join(Bullion.config.ca.dir, v)
+      }
+    )
+    setting :domains, default: "example.com", constructor: -> { _1.split(",") }
+    # 90 days cert expiration
+    setting :cert_validity_duration, default: 60 * 60 * 24 * 30 * 3, constructor: -> { Integer(_1) }
+  end
 
-  NAMESERVERS = ENV.fetch("DNS01_NAMESERVERS", "").split(",")
+  setting :acme, reader: true do
+    setting(
+      :challenge_clients,
+      default: ["Bullion::ChallengeClients::DNS", "Bullion::ChallengeClients::HTTP"],
+      constructor: -> { _1.map { |n| Kernel.const_get(n.to_s) } }
+    )
+  end
+
+  setting :db_url, reader: true
+
+  setting :nameservers, default: [], constructor: -> { _1.split(",") }
 
   MetricsRegistry = Prometheus::Client.registry
 
   def self.ca_key
-    @ca_key ||= OpenSSL::PKey::RSA.new(File.read(CA_KEY_PATH), CA_SECRET)
+    @ca_key ||= OpenSSL::PKey::RSA.new(File.read(config.ca.key_path), config.ca.secret)
   end
 
   def self.ca_cert
-    @ca_cert ||= OpenSSL::X509::Certificate.new(File.read(CA_CERT_PATH))
+    @ca_cert ||= OpenSSL::X509::Certificate.new(File.read(config.ca.cert_path))
   end
 
   def self.rotate_keys!
@@ -76,13 +84,48 @@ module Bullion
 
   # Ensures configuration settings are valid
   # @see https://support.apple.com/en-us/HT211025
-  def self.validate_config!
-    raise ConfigError, "Invalid Key Passphrase" unless CA_SECRET.is_a?(String)
-    raise ConfigError, "Invalid Key Path: #{CA_KEY_PATH}" unless File.readable?(CA_KEY_PATH)
-    raise ConfigError, "Invalid Cert Path: #{CA_CERT_PATH}" unless File.readable?(CA_CERT_PATH)
-    raise ConfigError, "Cert Validity Too Long" if 60 * 60 * 24 * 397 < CERT_VALIDITY_DURATION
-    raise ConfigError, "Cert Validity Too Short" if 60 * 60 * 24 * 2 > CERT_VALIDITY_DURATION
+  def self.validate_config! # rubocop:disable Metrics/AbcSize
+    raise ConfigError, "Invalid Key Passphrase" unless config.ca.secret.is_a?(String)
+
+    unless File.readable?(config.ca.key_path)
+      raise ConfigError,
+            "Invalid Key Path: #{config.ca.key_path}"
+    end
+    unless File.readable?(config.ca.cert_path)
+      raise ConfigError,
+            "Invalid Cert Path: #{config.ca.cert_path}"
+    end
+    if 60 * 60 * 24 * 397 < config.ca.cert_validity_duration
+      raise ConfigError,
+            "Cert Validity Too Long"
+    end
+    if 60 * 60 * 24 * 2 > config.ca.cert_validity_duration
+      raise ConfigError,
+            "Cert Validity Too Short"
+    end
+    raise ConfigError, "Missing DATABASE_URL" unless config.db_url
   end
+end
+
+Bullion.configure do |config|
+  # Config through environment variables
+  ca_dir       = ENV.fetch("CA_DIR", nil)
+  ca_secret    = ENV.fetch("CA_SECRET", nil)
+  ca_key_path  = ENV.fetch("CA_KEY_PATH", nil)
+  ca_cert_path = ENV.fetch("CA_CERT_PATH", nil)
+  ca_domains   = ENV.fetch("CA_DOMAINS", nil)
+  cert_dur     = ENV.fetch("CERT_VALIDITY_DURATION", nil)
+  db_url       = ENV.fetch("DATABASE_URL", nil)
+  nameservers  = ENV.fetch("DNS01_NAMESERVERS", nil)
+
+  config.ca.dir = ca_dir if ca_dir
+  config.ca.secret = ca_secret if ca_secret
+  config.ca.key_path = ca_key_path if ca_key_path
+  config.ca.cert_path = ca_cert_path if ca_cert_path
+  config.ca.domains = ca_domains if ca_domains
+  config.ca.cert_validity_duration = cert_dur if cert_dur
+  config.db_url = db_url if db_url
+  config.nameservers = nameservers if nameservers
 end
 
 # Internal requirements
@@ -103,9 +146,8 @@ if %w[development test].include?(ENV["RACK_ENV"])
   require "bullion/rspec/challenge_clients/dns"
   require "bullion/rspec/challenge_clients/http"
 
-  Bullion::DNS_CHALLENGE_CLIENT = Bullion::RSpec::ChallengeClients::DNS
-  Bullion::HTTP_CHALLENGE_CLIENT = Bullion::RSpec::ChallengeClients::HTTP
-else
-  Bullion::DNS_CHALLENGE_CLIENT = Bullion::ChallengeClients::DNS
-  Bullion::HTTP_CHALLENGE_CLIENT = Bullion::ChallengeClients::HTTP
+  Bullion.config.acme.challenge_clients = [
+    "Bullion::RSpec::ChallengeClients::DNS",
+    "Bullion::RSpec::ChallengeClients::HTTP"
+  ]
 end

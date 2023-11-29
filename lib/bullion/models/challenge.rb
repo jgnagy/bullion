@@ -8,11 +8,10 @@ module Bullion
 
       belongs_to :authorization
 
-      validates :acme_type, inclusion: { in: %w[http-01 dns-01] }
+      validates :acme_type, inclusion: {
+        in: -> { Bullion.config.acme.challenge_clients.map(&:acme_type) }
+      }
       validates :status, inclusion: { in: %w[invalid pending processing valid] }
-
-      scope :dns01, -> { where(acme_type: "dns-01") }
-      scope :http01, -> { where(acme_type: "http-01") }
 
       def identifier
         authorization.identifier["value"]
@@ -29,15 +28,14 @@ module Bullion
       end
 
       def client
-        case acme_type
-        when "dns-01"
-          DNS_CHALLENGE_CLIENT.new(self)
-        when "http-01"
-          HTTP_CHALLENGE_CLIENT.new(self)
-        else
+        challenge_class = Bullion.acme.challenge_clients.find { _1.acme_type == acme_type }
+
+        unless challenge_class
           raise Bullion::Acme::Errors::UnsupportedChallengeType,
                 "Challenge type '#{acme_type}' is not supported by Bullion."
         end
+
+        challenge_class.new(self)
       end
     end
   end

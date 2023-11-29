@@ -5,10 +5,10 @@ stages:
     scripts:
     - ./scripts/build.sh
   test:
-    image: ruby:3.1
+    image: ruby:3.2
     scripts:
     - ./scripts/test.sh
   release:
-    image: ruby:3.1
+    image: ruby:3.2
     only:
     - main

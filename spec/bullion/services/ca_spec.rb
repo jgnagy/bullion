@@ -60,110 +60,152 @@ RSpec.describe Bullion::Services::CA do
     }
   end
 
-  let(:directory_req_methods) do
-    %w[GET]
-  end
+  let(:directory_req_methods) { %w[GET] }
 
-  let(:nonce_req_methods) do
-    %w[GET HEAD].sort
-  end
+  let(:nonce_req_methods) { %w[GET HEAD].sort }
 
-  let(:generic_req_methods) do
-    %w[POST]
+  let(:generic_req_methods) { %w[POST] }
+
+  it "returns 200 OK for OPTIONS requests for /directory" do
+    options "/directory"
+    expect(last_response).to be_ok
   end
 
   it "provides reasonable OPTIONS for /directory" do
     options "/directory"
-    expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
     ).to eq(directory_req_methods)
   end
 
-  it "provides reasonable OPTIONS for /nonces" do
+  it "returns 200 OK for OPTIONS requests for /nonces" do
     options "/nonces"
     expect(last_response).to be_ok
+  end
+
+  it "provides reasonable OPTIONS for /nonces" do
+    options "/nonces"
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
     ).to eq(nonce_req_methods)
   end
 
-  it "provides reasonable OPTIONS for /accounts" do
+  it "returns 200 OK for OPTIONS requests for /accounts" do
     options "/accounts"
     expect(last_response).to be_ok
+  end
+
+  it "provides reasonable OPTIONS for /accounts" do
+    options "/accounts"
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
     ).to eq(generic_req_methods)
+  end
+
+  it "returns 200 OK for OPTIONS requests for /accounts/:id" do
+    options "/accounts/#{account.id}"
+    expect(last_response).to be_ok
   end
 
   it "provides reasonable OPTIONS for /accounts/:id" do
     options "/accounts/#{account.id}"
-    expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
     ).to eq(generic_req_methods)
+  end
+
+  it "returns 200 OK for OPTIONS requests for /accounts/:id/orders" do
+    options "/accounts/#{account.id}/orders"
+    expect(last_response).to be_ok
   end
 
   it "provides reasonable OPTIONS for /accounts/:id/orders" do
     options "/accounts/#{account.id}/orders"
-    expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
     ).to eq(generic_req_methods)
+  end
+
+  it "returns 200 OK for OPTIONS requests for /orders" do
+    options "/orders"
+    expect(last_response).to be_ok
   end
 
   it "provides reasonable OPTIONS for /orders" do
     options "/orders"
-    expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
     ).to eq(generic_req_methods)
+  end
+
+  it "returns 200 OK for OPTIONS requests for /orders/:id" do
+    options "/orders/#{order.id}"
+    expect(last_response).to be_ok
   end
 
   it "provides reasonable OPTIONS for /orders/:id" do
     options "/orders/#{order.id}"
-    expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
     ).to eq(generic_req_methods)
+  end
+
+  it "returns 200 OK for OPTIONS requests for /orders/:id/finalize" do
+    options "/orders/#{order.id}/finalize"
+    expect(last_response).to be_ok
   end
 
   it "provides reasonable OPTIONS for /orders/:id/finalize" do
     options "/orders/#{order.id}/finalize"
-    expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
     ).to eq(generic_req_methods)
+  end
+
+  it "returns 200 OK for OPTIONS requests for /authorizations/:id" do
+    options "/authorizations/#{authorization.id}"
+    expect(last_response).to be_ok
   end
 
   it "provides reasonable OPTIONS for /authorizations/:id" do
     options "/authorizations/#{authorization.id}"
-    expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
     ).to eq(generic_req_methods)
+  end
+
+  it "returns 200 OK for OPTIONS requests for /challenges/:id" do
+    options "/challenges/#{challenge.id}"
+    expect(last_response).to be_ok
   end
 
   it "provides reasonable OPTIONS for /challenges/:id" do
     options "/challenges/#{challenge.id}"
-    expect(last_response).to be_ok
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
     ).to eq(generic_req_methods)
   end
 
-  it "provides reasonable OPTIONS for /cabundle" do
+  it "returns 200 OK for OPTIONS requests for /cabundle" do
     options "/cabundle"
     expect(last_response).to be_ok
+  end
+
+  it "provides reasonable OPTIONS for /cabundle" do
+    options "/cabundle"
     expect(
       last_response.headers["Access-Control-Allow-Methods"].sort
     ).to eq(directory_req_methods)
   end
 
+  it "returns 200 OK for GET requests for /directory" do
+    get "/directory"
+    expect(last_response).to be_ok
+  end
+
   it "allows access to the CA directory" do
     get "/directory"
 
-    expect(last_response).to be_ok # 200 OK
     expect(last_response.headers["X-Content-Type-Options"]).to eq("nosniff")
     expect(JSON.parse(last_response.body)).to eq(directory_response_body)
   end
@@ -222,8 +264,10 @@ RSpec.describe Bullion::Services::CA do
 
       post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
 
+      # p last_response.body
+
       expect(last_response.status).to eq(201)
-      expect(last_response.headers["Content-Type"] == "application/json")
+      expect(last_response.headers["Content-Type"]).to eq("application/json")
       expect(last_response.headers["Location"]).to match(%r{^http://.+/accounts/[0-9]+$})
       expect(last_response.body).to be_a(String)
 
@@ -258,7 +302,7 @@ RSpec.describe Bullion::Services::CA do
       post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
 
       expect(last_response.status).to eq(201)
-      expect(last_response.headers["Content-Type"] == "application/json")
+      expect(last_response.headers["Content-Type"]).to eq("application/json")
       expect(last_response.headers["Location"]).to match(%r{^http://.+/accounts/[0-9]+$})
       expect(last_response.body).to be_a(String)
 
@@ -290,7 +334,7 @@ RSpec.describe Bullion::Services::CA do
       post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
 
       expect(last_response.status).to eq(400)
-      expect(last_response.headers["Content-Type"] == "application/json")
+      expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
       expect(last_response.body).to be_a(String)
 
       parsed_body = JSON.parse(last_response.body)
@@ -313,7 +357,7 @@ RSpec.describe Bullion::Services::CA do
         url: "/orders"
       }.to_json
       encoded_jwk = acme_base64(jwk)
-      payload = { identifiers:, }.to_json
+      payload = { identifiers: }.to_json
       encoded_payload = acme_base64(payload)
       signature_data = "#{encoded_jwk}.#{encoded_payload}"
 
@@ -326,7 +370,7 @@ RSpec.describe Bullion::Services::CA do
       post "/orders", body, { "CONTENT_TYPE" => "application/jose+json" }
 
       expect(last_response.status).to eq(201)
-      expect(last_response.headers["Content-Type"] == "application/json")
+      expect(last_response.headers["Content-Type"]).to eq("application/json")
       expect(last_response.headers["Location"]).to match(%r{^http://.+/orders/[0-9]+$})
       expect(last_response.body).to be_a(String)
 
@@ -369,7 +413,7 @@ RSpec.describe Bullion::Services::CA do
       post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
 
       expect(last_response.status).to eq(201)
-      expect(last_response.headers["Content-Type"] == "application/json")
+      expect(last_response.headers["Content-Type"]).to eq("application/json")
       expect(last_response.headers["Location"]).to match(%r{^http://.+/accounts/[0-9]+$})
       expect(last_response.body).to be_a(String)
 

@@ -21,32 +21,46 @@ module Bullion
 
       # @see https://tools.ietf.org/html/rfc7518#page-30
       def key_data_to_rsa(key_data)
-        key = OpenSSL::PKey::RSA.new
-        exponent = key_data["e"]
-        modulus = key_data["n"]
+        exponent = base64_to_long(key_data["e"])
+        modulus = base64_to_long(key_data["n"])
 
-        key.set_key(
-          base64_to_long(modulus),
-          base64_to_long(exponent),
-          nil
+        data_sequence = OpenSSL::ASN1::Sequence.new(
+          [
+            OpenSSL::ASN1::Integer.new(modulus),
+            OpenSSL::ASN1::Integer.new(exponent)
+          ]
         )
-        key
+
+        outer_sequence = OpenSSL::ASN1::Sequence.new(data_sequence)
+
+        OpenSSL::PKey::RSA.new(outer_sequence.to_der)
       end
 
       def key_data_to_ecdsa(key_data)
         crv_mapping = {
           "P-256" => "prime256v1",
+          "secp256k1" => "secp256k1",
           "P-384" => "secp384r1",
           "P-521" => "secp521r1"
         }
 
-        key = OpenSSL::PKey::EC.new(crv_mapping[key_data["crv"]])
         x = base64_to_octet(key_data["x"])
         y = base64_to_octet(key_data["y"])
+        curve_name = crv_mapping[key_data["crv"]]
+        raise "Unknown curve" unless curve_name
 
+        key_group = OpenSSL::PKey::EC::Group.new(curve_name)
         key_bn = OpenSSL::BN.new("\x04#{x}#{y}", 2)
-        key.public_key = OpenSSL::PKey::EC::Point.new(key.group, key_bn)
-        key
+        key_point = OpenSSL::PKey::EC::Point.new(key_group, key_bn)
+
+        pk_sequence = OpenSSL::ASN1::Sequence.new(
+          [OpenSSL::ASN1::ObjectId("id-ecPublicKey"), OpenSSL::ASN1::ObjectId(curve_name)]
+        )
+        bitstring = OpenSSL::ASN1::BitString.new(key_point.to_octet_string(:uncompressed))
+
+        outer_sequence = OpenSSL::ASN1::Sequence.new([pk_sequence, bitstring])
+
+        OpenSSL::PKey::EC.new(outer_sequence.to_der)
       end
 
       def base64_to_long(data)

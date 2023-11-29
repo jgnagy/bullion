@@ -15,6 +15,8 @@ require "sqlite3"
 require "sinatra/activerecord/rake"
 
 namespace :db do
+  # A hack to connect to the DB for testing
+  desc "Establishes a required connection to the DB for testing and demos"
   task :load_config do
     ActiveRecord::Base.establish_connection(url: ENV.fetch("DATABASE_URL", nil))
   end
@@ -31,6 +33,7 @@ end
 RuboCop::RakeTask.new(:rubocop)
 YARD::Rake::YardocTask.new
 
+desc "Prepares a demo or test environment"
 task :prep do
   FileUtils.mkdir_p(File.join(File.expand_path("."), "tmp"))
   ENV["CA_DIR"] = File.join(File.expand_path("."), "tmp").to_s
@@ -70,6 +73,7 @@ task :prep do
   File.write(File.join(File.expand_path("."), "tmp", "tls.crt"), root_ca.to_pem)
 end
 
+desc "Runs a backgrounded demo environment"
 task :demo do
   rack_env = "test"
   database_url = "sqlite3:#{File.expand_path(".")}/tmp/db/#{rack_env}.sqlite3"
@@ -81,10 +85,12 @@ task :demo do
   )
 end
 
+desc "Runs a foregrounded demo environment"
 task :foreground_demo do
   system("rackup -P #{File.expand_path(".")}/tmp/daemon.pid")
 end
 
+desc "Cleans up test or demo environment"
 task :cleanup do
   at_exit do
     if File.exist?("#{File.expand_path(".")}/tmp/daemon.pid")

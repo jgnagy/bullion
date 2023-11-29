@@ -43,20 +43,20 @@ RSpec.describe Bullion::Services::CA do
   describe "valid requests" do
     it "allows new ACME orders" do
       acme_order = @acme_client.new_order(identifiers: ["foo.test.domain"])
-      expect(acme_order).to be_a(::Acme::Client::Resources::Order)
+      expect(acme_order).to be_a(Acme::Client::Resources::Order)
     end
 
     it "finds authorizations for ACME orders" do
       acme_order = @acme_client.new_order(identifiers: ["bar.test.domain"])
       authorization = acme_order.authorizations.first
-      expect(authorization).to be_a(::Acme::Client::Resources::Authorization)
+      expect(authorization).to be_a(Acme::Client::Resources::Authorization)
     end
 
     it "provides DNS01 challenges for ACME orders" do
       acme_order = @acme_client.new_order(identifiers: ["baz.test.domain"])
       authorization = acme_order.authorizations.first
       challenge = authorization.dns
-      expect(challenge).to be_a(::Acme::Client::Resources::Challenges::DNS01)
+      expect(challenge).to be_a(Acme::Client::Resources::Challenges::DNS01)
       expect(challenge.record_name).to eq("_acme-challenge")
       expect(challenge.record_type).to eq("TXT")
       expect(challenge.record_content).to be_a(String)
@@ -66,7 +66,7 @@ RSpec.describe Bullion::Services::CA do
       acme_order = @acme_client.new_order(identifiers: ["bin.test.domain"])
       authorization = acme_order.authorizations.first
       challenge = authorization.http
-      expect(challenge).to be_a(::Acme::Client::Resources::Challenges::HTTP01)
+      expect(challenge).to be_a(Acme::Client::Resources::Challenges::HTTP01)
       expect(challenge.filename).to match(%r{^\.well-known/acme-challenge/.+})
       expect(challenge.content_type).to eq("text/plain")
       expect(challenge.file_content).to be_a(String)
@@ -77,7 +77,7 @@ RSpec.describe Bullion::Services::CA do
       acme_order = @acme_client.new_order(identifiers: [domain])
       authorization = acme_order.authorizations.first
       challenge = authorization.dns
-      expect(challenge).to be_a(::Acme::Client::Resources::Challenges::DNS01)
+      expect(challenge).to be_a(Acme::Client::Resources::Challenges::DNS01)
       challenge.request_validation
       challenge.reload
       expect(challenge.status).to eq("valid")
@@ -88,7 +88,7 @@ RSpec.describe Bullion::Services::CA do
       acme_order = @acme_client.new_order(identifiers: [domain])
       authorization = acme_order.authorizations.first
       challenge = authorization.http
-      expect(challenge).to be_a(::Acme::Client::Resources::Challenges::HTTP01)
+      expect(challenge).to be_a(Acme::Client::Resources::Challenges::HTTP01)
       challenge.request_validation
       challenge.reload
       expect(challenge.status).to eq("valid")

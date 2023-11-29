@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 RSpec.describe Bullion::Models::Certificate do
+  subject do
+    cert = described_class.from_csr(csr)
+    cert.data = csr.to_pem
+    cert.requester = "testing123"
+    cert
+  end
+
   let(:key) do
     OpenSSL::PKey::RSA.new 2048
   end
@@ -17,13 +24,6 @@ RSpec.describe Bullion::Models::Certificate do
     csr.public_key = key.public_key
     csr.sign(key, OpenSSL::Digest.new("SHA256"))
     csr
-  end
-
-  subject do
-    cert = Bullion::Models::Certificate.from_csr(csr)
-    cert.data = csr.to_pem
-    cert.requester = "testing123"
-    cert
   end
 
   it "supports fingerprinting" do

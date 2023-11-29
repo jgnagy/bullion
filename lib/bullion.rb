@@ -10,6 +10,7 @@ require "openssl"
 
 # External requirements
 require "sinatra/base"
+require "sinatra/contrib"
 require "sinatra/custom_logger"
 require "mysql2"
 require "sinatra/activerecord"
@@ -79,8 +80,8 @@ module Bullion
     raise ConfigError, "Invalid Key Passphrase" unless CA_SECRET.is_a?(String)
     raise ConfigError, "Invalid Key Path: #{CA_KEY_PATH}" unless File.readable?(CA_KEY_PATH)
     raise ConfigError, "Invalid Cert Path: #{CA_CERT_PATH}" unless File.readable?(CA_CERT_PATH)
-    raise ConfigError, "Cert Validity Too Long" if CERT_VALIDITY_DURATION > 60 * 60 * 24 * 397
-    raise ConfigError, "Cert Validity Too Short" if CERT_VALIDITY_DURATION < 60 * 60 * 24 * 2
+    raise ConfigError, "Cert Validity Too Long" if 60 * 60 * 24 * 397 < CERT_VALIDITY_DURATION
+    raise ConfigError, "Cert Validity Too Short" if 60 * 60 * 24 * 2 > CERT_VALIDITY_DURATION
   end
 end
 

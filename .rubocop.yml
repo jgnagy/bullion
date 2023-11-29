@@ -1,3 +1,8 @@
+
+require:
+- rubocop-rake
+- rubocop-rspec
+
 Layout/LineLength:
   Max: 100
 
@@ -22,7 +27,7 @@ Metrics/MethodLength:
   Max: 20
 
 Metrics/ModuleLength:
-  Max: 160
+  Max: 165
   Exclude:
   - 'spec/**/*_spec.rb'
 
@@ -49,3 +54,29 @@ Style/StringLiteralsInInterpolation:
 Style/StringConcatenation:
   Exclude:
   - 'Rakefile'
+
+RSpec/NamedSubject:
+  Enabled: false
+
+RSpec/BeforeAfterAll:
+  Enabled: false
+
+RSpec/FilePath:
+  Exclude:
+  - "spec/integration/**/*_spec.rb"
+
+RSpec/InstanceVariable:
+  Enabled: false
+
+RSpec/MultipleMemoizedHelpers:
+  Max: 12
+
+# For now, this is disabled until I can go through all the specs and fix them
+RSpec/MultipleExpectations:
+  Max: 13
+
+RSpec/ExampleLength:
+  Max: 34
+
+Gemspec/DevelopmentDependencies:
+  Enabled: false

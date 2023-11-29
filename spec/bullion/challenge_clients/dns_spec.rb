@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 RSpec.describe Bullion::ChallengeClients::DNS do
+  subject do
+    # Wrapper around the real Challenge Client
+    Bullion::RSpec::ChallengeClients::DNS.new(challenge)
+  end
+
   before(:all) do
     @acme_client_key ||= OpenSSL::PKey::RSA.new(2048)
     stripped_key = @acme_client_key.public_key
@@ -32,14 +37,8 @@ RSpec.describe Bullion::ChallengeClients::DNS do
     authorization.challenges.dns01.first
   end
 
-  subject do
-    # Wrapper around the real Challenge Client
-    Bullion::RSpec::ChallengeClients::DNS.new(challenge)
-  end
-
   it "produces expected DNS record requests" do
     expected_name = "_acme-challenge.#{challenge.identifier}"
-    expect(subject.dns_name).to be_a(String)
     expect(subject.dns_name).to eq(expected_name)
   end
 

@@ -25,7 +25,7 @@ module Bullion
       def thumbprint
         cipher = OpenSSL::Digest.new("SHA256")
         digest = cipher.digest(authorization.order.account.public_key.to_json)
-        Base64.urlsafe_encode64(digest).delete("=")
+        Base64.urlsafe_encode64(digest).sub(/[\s=]*\z/, "")
       end
 
       def client

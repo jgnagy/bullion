@@ -355,8 +355,11 @@ module Bullion
 
         if challenge.status == "valid"
           data[:validated] = challenge.validated
-          order = challenge.authorization.order
+          authorization = challenge.authorization
+          authorization.update!(status: "valid") unless authorization.status == "valid"
+          order = authorization.order
           order.update!(status: "ready") unless order.status == "ready"
+          add_link_relation("up", uri("/authorizations/#{challenge.authorization.id}"))
         end
 
         data.to_json
@@ -369,6 +372,7 @@ module Bullion
       # @see https://tools.ietf.org/html/rfc8555#section-7.4.2
       post "/certificates/:id" do
         parse_acme_jwt
+        add_acme_headers @new_nonce
 
         order = Models::Order.where(certificate_id: params[:id]).first
         if order && order.status == "valid"

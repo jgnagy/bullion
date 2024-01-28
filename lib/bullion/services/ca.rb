@@ -359,8 +359,9 @@ module Bullion
           authorization.update!(status: "valid") unless authorization.status == "valid"
           order = authorization.order
           order.update!(status: "ready") unless order.status == "ready"
-          add_link_relation("up", uri("/authorizations/#{challenge.authorization.id}"))
         end
+
+        add_link_relation("up", uri("/authorizations/#{challenge.authorization.id}"))
 
         data.to_json
       rescue Bullion::Acme::Error => e

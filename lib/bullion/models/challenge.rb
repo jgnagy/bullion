@@ -24,7 +24,7 @@ module Bullion
 
       def thumbprint
         cipher = OpenSSL::Digest.new("SHA256")
-        digest = cipher.digest(authorization.order.account.public_key.to_json)
+        digest = cipher.digest(lexicographically_ordered_public_key.to_json)
         Base64.urlsafe_encode64(digest).sub(/[\s=]*\z/, "")
       end
 
@@ -37,6 +37,13 @@ module Bullion
         end
 
         challenge_class.new(self)
+      end
+
+      private
+
+      def lexicographically_ordered_public_key
+        jwk = authorization.order.account.public_key
+        [["e", jwk["e"]], ["kty", jwk["kty"]], ["n", jwk["n"]]].to_h
       end
     end
   end

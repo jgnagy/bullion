@@ -3,7 +3,7 @@
 module Bullion
   VERSION = [
     0, # major
-    6, # minor
-    2 # patch
+    7, # minor
+    0 # patch
   ].join(".")
 end

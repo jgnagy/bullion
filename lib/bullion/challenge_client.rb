@@ -22,6 +22,8 @@ module Bullion
       tries = 0
       success = false
 
+      challenge.update!(status: "processing")
+
       benchtime = Benchmark.realtime do
         until success || tries >= retries
           tries += 1
@@ -39,6 +41,8 @@ module Bullion
       unless success
         LOGGER.info "Failed to validate #{type} #{identifier}"
         challenge.status = "invalid"
+        challenge.authorization.update!(status: "invalid")
+        challenge.authorization.order.update!(status: "invalid")
       end
 
       challenge.save

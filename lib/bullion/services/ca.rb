@@ -345,6 +345,8 @@ module Bullion
         # Oddly enough, cert-manager uses a GET request for retrieving Challenge info
         challenge.client.attempt unless @json_body && @json_body[:payload] == ""
 
+        challenge.reload
+
         data = {
           type: challenge.acme_type,
           status: challenge.status,

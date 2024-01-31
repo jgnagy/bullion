@@ -216,7 +216,7 @@ module Bullion
         csr_cert.subject = simple_subject(cert.subject.to_s)
 
         csr_cert.public_key = csr.public_key
-        csr_cert.issuer = Bullion.ca_cert.issuer
+        csr_cert.issuer = Bullion.ca_cert.subject
 
         csr_cert, sans = manage_csr_extensions(csr, csr_cert)
 

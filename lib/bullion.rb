@@ -70,8 +70,12 @@ module Bullion
     @ca_key ||= OpenSSL::PKey::RSA.new(File.read(config.ca.key_path), config.ca.secret)
   end
 
+  def self.ca_cert_file
+    @ca_cert_file ||= File.read(config.ca.cert_path)
+  end
+
   def self.ca_cert
-    @ca_cert ||= OpenSSL::X509::Certificate.new(File.read(config.ca.cert_path))
+    @ca_cert ||= OpenSSL::X509::Certificate.new(ca_cert_file)
   end
 
   def self.rotate_keys!

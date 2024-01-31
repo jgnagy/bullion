@@ -40,9 +40,9 @@ task :prep do
   ENV["CA_SECRET"] = "SomeS3cret"
   ENV["CA_DOMAINS"] = "test.domain"
 
-  key = OpenSSL::PKey::RSA.new(4096)
-  File.write(File.join(File.expand_path("."), "tmp", "tls.key"),
-             key.to_pem(OpenSSL::Cipher.new("aes-128-cbc"), ENV.fetch("CA_SECRET", nil)))
+  root_key = OpenSSL::PKey::RSA.new(4096)
+  File.write(File.join(File.expand_path("."), "tmp", "root_tls.key"),
+             root_key.to_pem(OpenSSL::Cipher.new("aes-128-cbc"), ENV.fetch("CA_SECRET", nil)))
 
   root_ca = OpenSSL::X509::Certificate.new
   root_ca.version = 2
@@ -51,7 +51,7 @@ task :prep do
     %w[test domain].reverse.map { |piece| "DC=#{piece}" }.join("/") + "/CN=bullion"
   )
   root_ca.issuer = root_ca.subject # root CA's are "self-signed"
-  root_ca.public_key = key.public_key
+  root_ca.public_key = root_key.public_key
   root_ca.not_before = Time.now
   root_ca.not_after = root_ca.not_before + (5 * 365 * 24 * 60 * 60) # 5 years validity
   ef = OpenSSL::X509::ExtensionFactory.new
@@ -69,8 +69,43 @@ task :prep do
   root_ca.add_extension(
     ef.create_extension("authorityKeyIdentifier", "keyid:always", false)
   )
-  root_ca.sign(key, OpenSSL::Digest.new("SHA256"))
-  File.write(File.join(File.expand_path("."), "tmp", "tls.crt"), root_ca.to_pem)
+  root_ca.sign(root_key, OpenSSL::Digest.new("SHA256"))
+  File.write(File.join(File.expand_path("."), "tmp", "root_tls.crt"), root_ca.to_pem)
+
+  intermediate_key = OpenSSL::PKey::RSA.new(4096)
+  File.write(File.join(File.expand_path("."), "tmp", "tls.key"),
+             intermediate_key.to_pem(OpenSSL::Cipher.new("aes-128-cbc"), ENV.fetch("CA_SECRET")))
+
+  int_ca = OpenSSL::X509::Certificate.new
+  int_ca.version = 2
+  int_ca.serial = (2**rand(10..20)) - 1
+  int_ca.subject = OpenSSL::X509::Name.parse(
+    %w[intermediate test domain].reverse.map { |piece| "DC=#{piece}" }.join("/") + "/CN=bullion"
+  )
+  int_ca.issuer = root_ca.subject
+  int_ca.public_key = intermediate_key.public_key
+  int_ca.not_before = Time.now
+  int_ca.not_after = int_ca.not_before + (2 * 365 * 24 * 60 * 60) # 2 years validity
+  ef = OpenSSL::X509::ExtensionFactory.new
+  ef.subject_certificate = int_ca
+  ef.issuer_certificate = root_ca
+  int_ca.add_extension(
+    ef.create_extension("basicConstraints", "CA:TRUE", true)
+  )
+  int_ca.add_extension(
+    ef.create_extension("keyUsage", "keyCertSign, cRLSign", true)
+  )
+  int_ca.add_extension(
+    ef.create_extension("subjectKeyIdentifier", "hash", false)
+  )
+  int_ca.add_extension(
+    ef.create_extension("authorityKeyIdentifier", "keyid:always", false)
+  )
+  int_ca.sign(root_key, OpenSSL::Digest.new("SHA256"))
+  File.write(
+    File.join(File.expand_path("."), "tmp", "tls.crt"),
+    int_ca.to_pem + root_ca.to_pem
+  )
 end
 
 desc "Runs a backgrounded demo environment"
@@ -98,6 +133,8 @@ task :cleanup do
     end
     FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "tls.crt"))
     FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "tls.key"))
+    FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "root_tls.crt"))
+    FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "root_tls.key"))
     FileUtils.rm_rf(File.join(File.expand_path("."), "tmp", "db"))
     ENV["CA_DIR"] = nil
     ENV["CA_SECRET"] = nil

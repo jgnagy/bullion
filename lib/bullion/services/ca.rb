@@ -95,7 +95,7 @@ module Bullion
         content_type "application/x-pem-file"
 
         attachment "cabundle.pem"
-        Bullion.ca_cert.to_pem
+        Bullion.ca_cert_file
       end
 
       # Retrieves a Nonce via a HEAD request
@@ -383,7 +383,7 @@ module Bullion
 
           cert = Models::Certificate.find(params[:id])
 
-          cert.data + Bullion.ca_cert.to_pem
+          cert.data + Bullion.ca_cert_file
         else
           halt(422, { error: "Order not valid" }.to_json)
         end

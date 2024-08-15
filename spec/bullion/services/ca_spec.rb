@@ -223,7 +223,7 @@ RSpec.describe Bullion::Services::CA do
   it "provides usable nonces" do
     get "/nonces"
 
-    expect(last_response.status).to eq(204) # no content
+    expect(last_response).to be_no_content # no content
     expect(last_response.headers).to include("Replay-Nonce")
     expect(last_response.headers["Replay-Nonce"]).to be_a(String)
     expect(last_response.headers["Link"]).to eq('<http://example.org/directory>;rel="index"')
@@ -266,7 +266,7 @@ RSpec.describe Bullion::Services::CA do
 
       # p last_response.body
 
-      expect(last_response.status).to eq(201)
+      expect(last_response).to be_created
       expect(last_response.headers["Content-Type"]).to eq("application/json")
       expect(last_response.headers["Location"]).to match(%r{^http://.+/accounts/[0-9]+$})
       expect(last_response.body).to be_a(String)
@@ -301,7 +301,7 @@ RSpec.describe Bullion::Services::CA do
 
       post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
 
-      expect(last_response.status).to eq(201)
+      expect(last_response).to be_created
       expect(last_response.headers["Content-Type"]).to eq("application/json")
       expect(last_response.headers["Location"]).to match(%r{^http://.+/accounts/[0-9]+$})
       expect(last_response.body).to be_a(String)
@@ -333,7 +333,7 @@ RSpec.describe Bullion::Services::CA do
 
       post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
 
-      expect(last_response.status).to eq(400)
+      expect(last_response).to be_bad_request
       expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
       expect(last_response.body).to be_a(String)
 
@@ -369,7 +369,7 @@ RSpec.describe Bullion::Services::CA do
 
       post "/orders", body, { "CONTENT_TYPE" => "application/jose+json" }
 
-      expect(last_response.status).to eq(201)
+      expect(last_response).to be_created
       expect(last_response.headers["Content-Type"]).to eq("application/json")
       expect(last_response.headers["Location"]).to match(%r{^http://.+/orders/[0-9]+$})
       expect(last_response.body).to be_a(String)
@@ -412,7 +412,7 @@ RSpec.describe Bullion::Services::CA do
 
       post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
 
-      expect(last_response.status).to eq(201)
+      expect(last_response).to be_created
       expect(last_response.headers["Content-Type"]).to eq("application/json")
       expect(last_response.headers["Location"]).to match(%r{^http://.+/accounts/[0-9]+$})
       expect(last_response.body).to be_a(String)

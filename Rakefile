@@ -122,7 +122,7 @@ end
 
 desc "Runs a foregrounded demo environment"
 task :foreground_demo do
-  system("rackup -P #{File.expand_path(".")}/tmp/daemon.pid")
+  system("rackup -o 0.0.0.0 -P #{File.expand_path(".")}/tmp/daemon.pid")
 end
 
 desc "Cleans up test or demo environment"

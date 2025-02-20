@@ -90,7 +90,7 @@ GEM
     mysql2 (0.5.6)
     net-http (0.4.1)
       uri
-    nio4r (2.7.3)
+    nio4r (2.7.4)
     nokogiri (1.16.7-aarch64-linux)
       racc (~> 1.4)
     nokogiri (1.16.7-arm-linux)
@@ -110,7 +110,7 @@ GEM
       racc
     prometheus-client (4.2.3)
       base64
-    puma (6.4.2)
+    puma (6.4.3)
       nio4r (~> 2.0)
     racc (1.8.1)
     rack (2.2.9)

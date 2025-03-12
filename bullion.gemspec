@@ -24,8 +24,9 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = "~> 3.2"
+  spec.required_ruby_version = "~> 3.3"
 
+  spec.add_dependency "benchmark",            "~> 0.4"
   spec.add_dependency "dry-configurable",     "~> 1.1"
   spec.add_dependency "httparty",             "~> 0.21"
   spec.add_dependency "json",                 "~> 2.6"
@@ -37,7 +38,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "sinatra",              "~> 3.1"
   spec.add_dependency "sinatra-activerecord", "~> 2.0"
   spec.add_dependency "sinatra-contrib",      "~> 3.1"
-  spec.add_dependency "sqlite3",              "~> 1.6"
+  spec.add_dependency "sqlite3",              "~> 2.6"
 
   spec.add_development_dependency "acme-client",         "~> 2.0"
   spec.add_development_dependency "bundler",             "~> 2.4"
@@ -47,7 +48,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec",               "~> 3.12"
   spec.add_development_dependency "rubocop",             "~> 1.57"
   spec.add_development_dependency "rubocop-rake",        "~> 0.6"
-  spec.add_development_dependency "rubocop-rspec",       "~> 2.25"
+  spec.add_development_dependency "rubocop-rspec",       "~> 3.5"
   spec.add_development_dependency "simplecov",           "~> 0.22"
   spec.add_development_dependency "simplecov-cobertura", "~> 2.1"
   spec.add_development_dependency "solargraph",          "~> 0.49"

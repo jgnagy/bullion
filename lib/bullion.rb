@@ -9,6 +9,7 @@ require "logger"
 require "openssl"
 
 # External requirements
+require "benchmark"
 require "dry-configurable"
 require "sinatra/base"
 require "sinatra/contrib"

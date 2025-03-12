@@ -1,5 +1,4 @@
-
-require:
+plugins:
 - rubocop-rake
 - rubocop-rspec
 
@@ -7,10 +6,11 @@ Layout/LineLength:
   Max: 100
 
 AllCops:
+  TargetRubyVersion: 3.3
   Exclude:
   - 'db/schema.rb'
   - 'vendor/**/*'
-  TargetRubyVersion: 3.2
+  - 'tmp/**/*'
   NewCops: enable
 
 Metrics/AbcSize:
@@ -60,10 +60,6 @@ RSpec/NamedSubject:
 
 RSpec/BeforeAfterAll:
   Enabled: false
-
-RSpec/FilePath:
-  Exclude:
-  - "spec/integration/**/*_spec.rb"
 
 RSpec/InstanceVariable:
   Enabled: false

@@ -146,10 +146,7 @@ RSpec.describe Bullion::Services::CA do
     it "rejects new ACME orders for invalid domains" do
       domain = "foo.should.not.work"
       expect { @acme_client.new_order(identifiers: [domain]) }.to(
-        raise_error(
-          Acme::Client::Error,
-          %(Domains [{"type"=>"dns", "value"=>"#{domain}"}] not allowed)
-        )
+        raise_error(Acme::Client::Error, /"#{domain}"}\] not allowed/)
       )
     end
 

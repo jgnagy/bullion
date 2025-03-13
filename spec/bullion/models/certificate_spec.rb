@@ -14,7 +14,6 @@ RSpec.describe Bullion::Models::Certificate do
 
   let(:csr) do
     csr = OpenSSL::X509::Request.new
-    csr.version = 2
     csr.subject = OpenSSL::X509::Name.new(
       [
         ["CN", "foo.example.com", OpenSSL::ASN1::UTF8STRING]

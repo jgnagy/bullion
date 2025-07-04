@@ -13,6 +13,13 @@ module Bullion
       }
       validates :status, inclusion: { in: %w[invalid pending processing valid] }
 
+      enum :status, {
+        invalid: "invalid",
+        pending: "pending",
+        processing: "processing",
+        valid: "valid"
+      }, suffix: "status"
+
       def identifier
         authorization.identifier["value"]
       end

@@ -9,9 +9,18 @@ module Bullion
       after_initialize :init_values, unless: :persisted?
 
       belongs_to :account
+      belongs_to :certificate
       has_many :authorizations
 
       validates :status, inclusion: { in: %w[invalid pending ready processing valid] }
+
+      enum :status, {
+        invalid: "invalid",
+        pending: "pending",
+        ready: "ready",
+        processing: "processing",
+        valid: "valid"
+      }, suffix: "status"
 
       def init_values
         self.expires ||= Time.now + (60 * 60)
@@ -31,9 +40,8 @@ module Bullion
         end
       end
 
-      def certificate
-        Certificate.find(certificate_id)
-      end
+      # Used to extract domains from order (mostly for comparison with CSR)
+      def domains = identifiers.map { _1["value"] }
     end
   end
 end

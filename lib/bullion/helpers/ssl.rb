@@ -14,11 +14,6 @@ module Bullion
         end
       end
 
-      def openssl_compat_csr(csrdata)
-        "-----BEGIN CERTIFICATE REQUEST-----\n" \
-          "#{csrdata}-----END CERTIFICATE REQUEST-----"
-      end
-
       # @see https://tools.ietf.org/html/rfc7518#page-30
       def key_data_to_rsa(key_data)
         exponent = base64_to_long(key_data["e"])

@@ -48,7 +48,7 @@ task :prep do
   root_ca.version = 2
   root_ca.serial = (2**rand(10..20)) - 1
   root_ca.subject = OpenSSL::X509::Name.parse(
-    %w[test domain].reverse.map { |piece| "DC=#{piece}" }.join("/") + "/CN=bullion"
+    %w[test domain].reverse.map { "DC=#{_1}" }.join("/") + "/CN=bullion"
   )
   root_ca.issuer = root_ca.subject # root CA's are "self-signed"
   root_ca.public_key = root_key.public_key

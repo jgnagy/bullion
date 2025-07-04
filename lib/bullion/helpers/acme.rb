@@ -113,20 +113,20 @@ module Bullion
         true
       end
 
-      def validate_acme_csr(order, csr)
+      def validate_acme_csr(order_csr)
+        csr = order_csr.csr
+        order = order_csr.order
         csr_attrs = extract_csr_attrs(csr)
         csr_sans = extract_csr_sans(csr_attrs)
         csr_domains = extract_csr_domains(csr_sans)
         csr_cn = cn_from_csr(csr)
 
-        order_domains = order.identifiers.map { |i| i["value"] }
-
         # Make sure the CSR has a valid public key
         raise Bullion::Acme::Errors::BadCsr unless csr.verify(csr.public_key)
 
-        return false unless order.status == "ready"
+        return false unless order.ready_status?
         raise Bullion::Acme::Errors::BadCsr unless csr_domains.include?(csr_cn)
-        raise Bullion::Acme::Errors::BadCsr unless csr_domains.sort == order_domains.sort
+        raise Bullion::Acme::Errors::BadCsr unless csr_domains.sort == order.domains.sort
 
         true
       end
@@ -137,7 +137,7 @@ module Bullion
         # Don't approve empty orders
         raise Bullion::Acme::Errors::InvalidOrder, "Empty order!" if hash["identifiers"].empty?
 
-        order_domains = hash["identifiers"].select { |ident| ident["type"] == "dns" }
+        order_domains = hash["identifiers"].select { _1["type"] == "dns" }
 
         # Don't approve an order with identifiers that _aren't_ of type 'dns'
         unless hash["identifiers"] == order_domains

@@ -8,7 +8,7 @@ module Bullion
       def self.acme_type = "http-01"
       def type = "HTTP01"
 
-      def perform
+      def performs_challenge?
         response = begin
           retrieve_body(challenge_url)
         rescue SocketError

@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# \ -s puma
-
 require "bullion"
 Bullion.validate_config!
 

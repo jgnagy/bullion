@@ -6,11 +6,12 @@ Layout/LineLength:
   Max: 100
 
 AllCops:
-  TargetRubyVersion: 3.3
+  TargetRubyVersion: 3.4
   Exclude:
   - 'db/schema.rb'
   - 'vendor/**/*'
   - 'tmp/**/*'
+  - Itsi.rb
   NewCops: enable
 
 Metrics/AbcSize:

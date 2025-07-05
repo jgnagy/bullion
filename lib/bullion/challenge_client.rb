@@ -27,7 +27,7 @@ module Bullion
       benchtime = Benchmark.realtime do
         until success || tries >= retries
           tries += 1
-          success = perform
+          success = performs_challenge?
           if success
             LOGGER.info "Validated #{type} #{identifier}"
             challenge.status = "valid"
@@ -58,6 +58,10 @@ module Bullion
 
     def identifier
       challenge.identifier
+    end
+
+    def performs_challenge?
+      raise NotImplementedError
     end
   end
 end

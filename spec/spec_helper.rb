@@ -81,7 +81,7 @@ module BullionTest
       seq = OpenSSL::ASN1.decode(signed)
       big_ints = seq.value.map(&:value)
       bytes = (key.group.degree + 7) / 8
-      r_val, s_val = big_ints.map { _1.to_s(2).rjust(bytes, "\x00") }
+      r_val, s_val = big_ints.map { it.to_s(2).rjust(bytes, "\x00") }
       acme_base64 [r_val, s_val].join
     end
   end

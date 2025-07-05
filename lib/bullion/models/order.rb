@@ -41,7 +41,7 @@ module Bullion
       end
 
       # Used to extract domains from order (mostly for comparison with CSR)
-      def domains = identifiers.map { _1["value"] }
+      def domains = identifiers.map { it["value"] }
     end
   end
 end

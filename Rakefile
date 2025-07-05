@@ -48,7 +48,7 @@ task :prep do
   root_ca.version = 2
   root_ca.serial = (2**rand(10..20)) - 1
   root_ca.subject = OpenSSL::X509::Name.parse(
-    %w[test domain].reverse.map { "DC=#{_1}" }.join("/") + "/CN=bullion"
+    %w[test domain].reverse.map { "DC=#{it}" }.join("/") + "/CN=bullion"
   )
   root_ca.issuer = root_ca.subject # root CA's are "self-signed"
   root_ca.public_key = root_key.public_key
@@ -116,13 +116,14 @@ task :demo do
   system(
     "RACK_ENV=\"#{rack_env}\" DATABASE_URL=\"#{database_url}\" " \
     "LOG_LEVEL='#{ENV.fetch("LOG_LEVEL", "info")}' " \
-    "rackup -D -P #{File.expand_path(".")}/tmp/daemon.pid"
+    "itsi --daemonize"
   )
+  FileUtils.touch(File.join(File.expand_path("."), "tmp", "daemon.pid"))
 end
 
 desc "Runs a foregrounded demo environment"
 task :foreground_demo do
-  system("rackup -o 0.0.0.0 -P #{File.expand_path(".")}/tmp/daemon.pid")
+  system("itsi")
 end
 
 desc "Cleans up test or demo environment"
@@ -130,8 +131,7 @@ task :cleanup do
   at_exit do
     pid_file = File.join(File.expand_path("."), "tmp", "daemon.pid")
     if File.exist?(pid_file)
-      pid = File.read(pid_file).to_i
-      Process.kill("TERM", pid)
+      system("itsi stop")
       FileUtils.rm_f(pid_file)
     end
     FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "tls.crt"))

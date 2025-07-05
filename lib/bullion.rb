@@ -32,7 +32,7 @@ module Bullion
   LOGGER.level = ENV.fetch("LOG_LEVEL", :warn)
 
   setting :ca, reader: true do
-    setting :dir, default: "tmp", constructor: -> { File.expand_path(_1) }
+    setting :dir, default: "tmp", constructor: -> { File.expand_path(it) }
     setting :secret, default: "SomeS3cret"
     setting(
       :key_path,
@@ -48,22 +48,22 @@ module Bullion
         v.include?("/") ? File.expand_path(v) : File.join(Bullion.config.ca.dir, v)
       }
     )
-    setting :domains, default: "example.com", constructor: -> { _1.split(",") }
+    setting :domains, default: "example.com", constructor: -> { it.split(",") }
     # 90 days cert expiration
-    setting :cert_validity_duration, default: 60 * 60 * 24 * 30 * 3, constructor: -> { Integer(_1) }
+    setting :cert_validity_duration, default: 60 * 60 * 24 * 30 * 3, constructor: -> { Integer(it) }
   end
 
   setting :acme, reader: true do
     setting(
       :challenge_clients,
       default: ["Bullion::ChallengeClients::DNS", "Bullion::ChallengeClients::HTTP"],
-      constructor: -> { _1.map { |n| Kernel.const_get(n.to_s) } }
+      constructor: -> { it.map { |n| Kernel.const_get(n.to_s) } }
     )
   end
 
   setting :db_url, reader: true
 
-  setting :nameservers, default: [], constructor: -> { _1.split(",") }
+  setting :nameservers, default: [], constructor: -> { it.split(",") }
 
   MetricsRegistry = Prometheus::Client.registry
 
@@ -79,7 +79,7 @@ module Bullion
     @ca_cert ||= OpenSSL::X509::Certificate.new(ca_cert_file)
   end
 
-  def self.rotate_keys!
+  def self.rotate_keys! # rubocop:disable Naming/PredicateMethod
     @ca_key = nil
     @ca_cert = nil
     ca_key

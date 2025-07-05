@@ -121,7 +121,7 @@ module Bullion
         begin
           parse_acme_jwt(header_data["jwk"], validate_nonce: false)
 
-          validate_account_data(@payload_data)
+          account_data_valid?(@payload_data)
         rescue Bullion::Acme::Error => e
           content_type "application/problem+json"
           halt 400, { type: e.acme_error, detail: e.message }.to_json
@@ -186,7 +186,7 @@ module Bullion
         add_acme_headers @new_nonce
 
         {
-          orders: @user.orders.map { uri("/orders/#{_1.id}") }
+          orders: @user.orders.map { uri("/orders/#{it.id}") }
         }
       end
 
@@ -196,9 +196,9 @@ module Bullion
         parse_acme_jwt
 
         # Only identifiers of type "dns" are supported
-        identifiers = @payload_data["identifiers"].select { _1["type"] == "dns" }
+        identifiers = @payload_data["identifiers"].select { it["type"] == "dns" }
 
-        validate_order(@payload_data)
+        order_valid?(@payload_data)
 
         order = @user.start_order(
           identifiers:,
@@ -215,7 +215,7 @@ module Bullion
           notBefore: order.not_before,
           notAfter: order.not_after,
           identifiers: order.identifiers,
-          authorizations: order.authorizations.map { uri("/authorizations/#{_1.id}") },
+          authorizations: order.authorizations.map { uri("/authorizations/#{it.id}") },
           finalize: uri("/orders/#{order.id}/finalize")
         }.to_json
       rescue Bullion::Acme::Error => e
@@ -238,7 +238,7 @@ module Bullion
           notBefore: order.not_before,
           notAfter: order.not_after,
           identifiers: order.identifiers,
-          authorizations: order.authorizations.map { uri("/authorizations/#{_1.id}") },
+          authorizations: order.authorizations.map { uri("/authorizations/#{it.id}") },
           finalize: uri("/orders/#{order.id}/finalize")
         }
 
@@ -262,7 +262,7 @@ module Bullion
 
         order_csr = Models::OrderCsr.from_acme_request(order, @payload_data["csr"])
 
-        unless validate_acme_csr(order_csr)
+        unless acme_csr_valid?(order_csr)
           content_type "application/problem+json"
           halt 400, {
             type: Bullion::Acme::Errors::BadCsr.new.acme_error,
@@ -282,7 +282,7 @@ module Bullion
           notBefore: order.not_before,
           notAfter: order.not_after,
           identifiers: order.identifiers,
-          authorizations: order.authorizations.map { uri("/authorizations/#{_1.id}") },
+          authorizations: order.authorizations.map { uri("/authorizations/#{it.id}") },
           finalize: uri("/orders/#{order.id}/finalize")
         }
 

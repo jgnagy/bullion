@@ -8,7 +8,7 @@ module Bullion
       def self.acme_type = "dns-01"
       def type = "DNS01"
 
-      def perform
+      def performs_challenge?
         value = dns_value
         expected_value = digest_value("#{challenge.token}.#{challenge.thumbprint}")
 

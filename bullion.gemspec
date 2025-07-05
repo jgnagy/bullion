@@ -38,7 +38,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "sinatra",              "~> 3.1"
   spec.add_dependency "sinatra-activerecord", "~> 2.0"
   spec.add_dependency "sinatra-contrib",      "~> 3.1"
-  spec.add_dependency "sqlite3",              "~> 2.6"
+  spec.add_dependency "sqlite3",              "~> 2.7"
 
   spec.add_development_dependency "acme-client",         "~> 2.0"
   spec.add_development_dependency "bundler",             "~> 2.4"

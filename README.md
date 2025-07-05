@@ -40,8 +40,9 @@ Whether run locally or via Docker, the following environment variables configure
 | `DNS01_NAMESERVERS` | _None_ | A comma-delimited list of nameservers to use for resolving [DNS-01](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) challenges. Usually you'll want this to be set to your _internal_ nameservers so internal names resolve correctly. When not set, it'll use the host's DNS. |
 | `LOG_LEVEL` | `warn` | Log level for Bullion. Supported levels (starting with the noisiest) are debug, info, warn, error, and fatal. |
 | `BULLION_PORT` | `9292` | TCP port Bullion will listen on. |
-| `MIN_THREADS` | `2` | Minimum number of [Puma](https://puma.io/) threads for processing requests. |
-| `MAX_THREADS` | `32` | Maximum number of [Puma](https://puma.io/) threads for processing requests. |
+| `THREADS` | `3` | Number of [Itsi threads](https://itsi.fyi/options/threads/) for processing requests. |
+| `WORKERS` | `1` | Number of [Itsi workers](https://itsi.fyi/options/workers/) to spawn. |
+| `WORKER_MEMORY_LIMIT` | `1024**3` | [Itsi worker memory limit](https://itsi.fyi/options/worker_memory_limit/) for each worker process (in bytes). Default is 1GiB. |
 | `RACK_ENV` | `production`* | When run via Docker, the default is `production`, when run via `rake local_demo` it is `development`. Used to tell Bullion if it is run in development mode or for testing. |
 
 ### Integrating

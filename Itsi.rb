@@ -10,13 +10,13 @@ env = ENV.fetch("APP_ENV") { ENV.fetch("RACK_ENV", "development") }
 
 # Number of worker processes to spawn
 # If more than 1, Itsi will be booted in Cluster mode
-workers ENV["ITSI_WORKERS"]&.to_i || (env == "development" ? 1 : nil)
+workers ENV["WORKERS"]&.to_i || (env == "development" ? 1 : nil)
 
 # Number of threads to spawn per worker process
 # For pure CPU bound applicationss, you'll get the best results keeping this number low
 # Setting a value of 1 is great for superficial benchmarks, but in reality
 # it's better to set this a bit higher to allow expensive requests to get overtaken and minimize head-of-line blocking
-threads ENV.fetch("ITSI_THREADS", 3)
+threads ENV.fetch("THREADS", 3).to_i
 
 # If your application is IO bound (e.g. performing a lot of proxied HTTP requests, or heavy queries etc)
 # you can see *substantial* benefits from enabling this option.
@@ -24,7 +24,7 @@ threads ENV.fetch("ITSI_THREADS", 3)
 # E.g.
 # `fiber_scheduler "Itsi::Scheduler"` - The default fast and light-weight scheduler that comes with Itsi
 # `fiber_scheduler "Async::Scheduler"` - Bring your own scheduler!
-fiber_scheduler nil
+fiber_scheduler "Itsi::Scheduler"
 
 # If you bind to https, without specifying a certificate, Itsi will use a self-signed certificate.
 # The self-signed certificate will use a CA generated for your
@@ -45,7 +45,7 @@ fiber_scheduler nil
 # bind "unix:///tmp/itsi.sock"
 # bind "tls:///tmp/itsi.secure.sock"
 
-bind "http://0.0.0.0:9292"
+bind "http://0.0.0.0:#{ENV.fetch("BULLION_PORT", 9292)}"
 
 # If you want to preload the application, set preload to true
 # to load the entire rack-app defined in rack_file_name before forking.
@@ -64,7 +64,7 @@ preload true
 # When this limit is reached, the worker will be gracefully restarted.
 # Only one worker is restarted at a time to ensure we don't take down
 # all of them at once, if they reach the threshold simultaneously.
-worker_memory_limit 1024 * 1024 * 1024
+worker_memory_limit ENV.fetch("WORKER_MEMORY_LIMIT") { 1024 * 1024 * 1024 } # Default to 1GB
 
 # You can provide an optional block of code to run, when a worker hits its memory threshold
 # (Use this to send yourself an alert,
@@ -96,7 +96,7 @@ oob_gc_responses_threshold 512
 # Log level
 # Set this to one of the following values: debug, info, warn, error, fatal
 # Can also be set using the ITSI_LOG environment variable
-log_level :info
+log_level ENV.fetch("LOG_LEVEL", "warn").to_sym
 
 # Log Format
 # Set this to be either :plain or :json. If you leave it blank Itsi will try

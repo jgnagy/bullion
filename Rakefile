@@ -4,12 +4,62 @@ ENV["RACK_ENV"] ||= "development"
 
 if %w[development test].include? ENV["RACK_ENV"]
   ENV["DATABASE_URL"] = "sqlite3:#{File.expand_path(".")}/tmp/db/#{ENV["RACK_ENV"]}.sqlite3"
+  require "bundler/gem_tasks"
+  require "rspec/core/rake_task"
+  require "rubocop/rake_task"
+  require "yard"
+
+  RSpec::Core::RakeTask.new(:spec) do |t|
+    t.exclude_pattern = "spec/integration/**{,/*/**}/*_spec.rb"
+    t.rspec_opts = "--require spec_helper"
+  end
+  RSpec::Core::RakeTask.new(:integration_testing) do |t|
+    t.pattern = "spec/integration/**{,/*/**}/*_spec.rb"
+    t.rspec_opts = "--require integration_helper"
+  end
+  RuboCop::RakeTask.new(:rubocop)
+  YARD::Rake::YardocTask.new
+
+  desc "Runs a backgrounded demo environment"
+  task :demo do
+    rack_env = "test"
+    database_url = "sqlite3:#{File.expand_path(".")}/tmp/db/#{rack_env}.sqlite3"
+    system("RACK_ENV=\"#{rack_env}\" DATABASE_URL=\"#{database_url}\" bundle exec rake db:migrate")
+    system(
+      "RACK_ENV=\"#{rack_env}\" DATABASE_URL=\"#{database_url}\" " \
+      "LOG_LEVEL='#{ENV.fetch("LOG_LEVEL", "info")}' " \
+      "itsi --daemonize"
+    )
+    FileUtils.touch(File.join(File.expand_path("."), "tmp", "daemon.pid"))
+  end
+
+  desc "Runs a foregrounded demo environment"
+  task :foreground_demo do
+    system("itsi")
+  end
+
+  desc "Cleans up test or demo environment"
+  task :cleanup do
+    at_exit do
+      pid_file = File.join(File.expand_path("."), "tmp", "daemon.pid")
+      if File.exist?(pid_file)
+        system("itsi stop")
+        FileUtils.rm_f(pid_file)
+      end
+      FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "tls.crt"))
+      FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "tls.key"))
+      FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "root_tls.crt"))
+      FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "root_tls.key"))
+      FileUtils.rm_rf(File.join(File.expand_path("."), "tmp", "db"))
+      ENV["CA_DIR"] = nil
+      ENV["CA_SECRET"] = nil
+      ENV["CA_DOMAINS"] = nil
+    end
+  end
+
+  Rake::Task["integration_testing"].enhance(["cleanup"])
 end
 
-require "bundler/gem_tasks"
-require "rspec/core/rake_task"
-require "rubocop/rake_task"
-require "yard"
 require "openssl"
 require "sqlite3"
 require "sinatra/activerecord/rake"
@@ -21,17 +71,6 @@ namespace :db do
     ActiveRecord::Base.establish_connection(url: ENV.fetch("DATABASE_URL", nil))
   end
 end
-
-RSpec::Core::RakeTask.new(:spec) do |t|
-  t.exclude_pattern = "spec/integration/**{,/*/**}/*_spec.rb"
-  t.rspec_opts = "--require spec_helper"
-end
-RSpec::Core::RakeTask.new(:integration_testing) do |t|
-  t.pattern = "spec/integration/**{,/*/**}/*_spec.rb"
-  t.rspec_opts = "--require integration_helper"
-end
-RuboCop::RakeTask.new(:rubocop)
-YARD::Rake::YardocTask.new
 
 desc "Prepares a demo or test environment"
 task :prep do
@@ -107,45 +146,6 @@ task :prep do
     int_ca.to_pem + root_ca.to_pem
   )
 end
-
-desc "Runs a backgrounded demo environment"
-task :demo do
-  rack_env = "test"
-  database_url = "sqlite3:#{File.expand_path(".")}/tmp/db/#{rack_env}.sqlite3"
-  system("RACK_ENV=\"#{rack_env}\" DATABASE_URL=\"#{database_url}\" bundle exec rake db:migrate")
-  system(
-    "RACK_ENV=\"#{rack_env}\" DATABASE_URL=\"#{database_url}\" " \
-    "LOG_LEVEL='#{ENV.fetch("LOG_LEVEL", "info")}' " \
-    "itsi --daemonize"
-  )
-  FileUtils.touch(File.join(File.expand_path("."), "tmp", "daemon.pid"))
-end
-
-desc "Runs a foregrounded demo environment"
-task :foreground_demo do
-  system("itsi")
-end
-
-desc "Cleans up test or demo environment"
-task :cleanup do
-  at_exit do
-    pid_file = File.join(File.expand_path("."), "tmp", "daemon.pid")
-    if File.exist?(pid_file)
-      system("itsi stop")
-      FileUtils.rm_f(pid_file)
-    end
-    FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "tls.crt"))
-    FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "tls.key"))
-    FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "root_tls.crt"))
-    FileUtils.rm_f(File.join(File.expand_path("."), "tmp", "root_tls.key"))
-    FileUtils.rm_rf(File.join(File.expand_path("."), "tmp", "db"))
-    ENV["CA_DIR"] = nil
-    ENV["CA_SECRET"] = nil
-    ENV["CA_DOMAINS"] = nil
-  end
-end
-
-Rake::Task["integration_testing"].enhance(["cleanup"])
 
 task test: %i[prep db:migrate spec demo integration_testing]
 task unit: %i[prep db:migrate spec]

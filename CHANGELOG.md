@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.0](https://github.com/jgnagy/bullion/compare/bullion/v0.9.0...bullion/v0.10.0) (2025-07-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* update Docker image with Itsi configuration
+
+### Bug Fixes
+
+* update Docker image with Itsi configuration ([4be39dd](https://github.com/jgnagy/bullion/commit/4be39dd6200f058907029e23a07f19241705b701))
+
 ## [0.9.0](https://github.com/jgnagy/bullion/compare/bullion/v0.8.0...bullion/v0.9.0) (2025-07-05)
 
 

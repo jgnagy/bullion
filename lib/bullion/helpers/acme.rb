@@ -88,7 +88,7 @@ module Bullion
 
       # Validation helpers
 
-      def validate_account_data(hash)
+      def account_data_valid?(hash)
         unless [true, false, nil].include?(hash["onlyReturnExisting"])
           raise Bullion::Acme::Errors::Malformed,
                 "Invalid onlyReturnExisting: #{hash["onlyReturnExisting"]}"
@@ -113,31 +113,31 @@ module Bullion
         true
       end
 
-      def validate_acme_csr(order, csr)
+      def acme_csr_valid?(order_csr)
+        csr = order_csr.csr
+        order = order_csr.order
         csr_attrs = extract_csr_attrs(csr)
         csr_sans = extract_csr_sans(csr_attrs)
         csr_domains = extract_csr_domains(csr_sans)
         csr_cn = cn_from_csr(csr)
 
-        order_domains = order.identifiers.map { |i| i["value"] }
-
         # Make sure the CSR has a valid public key
         raise Bullion::Acme::Errors::BadCsr unless csr.verify(csr.public_key)
 
-        return false unless order.status == "ready"
+        return false unless order.ready_status?
         raise Bullion::Acme::Errors::BadCsr unless csr_domains.include?(csr_cn)
-        raise Bullion::Acme::Errors::BadCsr unless csr_domains.sort == order_domains.sort
+        raise Bullion::Acme::Errors::BadCsr unless csr_domains.sort == order.domains.sort
 
         true
       end
 
-      def validate_order(hash)
+      def order_valid?(hash)
         validate_order_nb_and_na(hash["notBefore"], hash["notAfter"])
 
         # Don't approve empty orders
         raise Bullion::Acme::Errors::InvalidOrder, "Empty order!" if hash["identifiers"].empty?
 
-        order_domains = hash["identifiers"].select { |ident| ident["type"] == "dns" }
+        order_domains = hash["identifiers"].select { it["type"] == "dns" }
 
         # Don't approve an order with identifiers that _aren't_ of type 'dns'
         unless hash["identifiers"] == order_domains
@@ -188,7 +188,7 @@ module Bullion
 
       def extract_valid_order_domains(order_domains)
         order_domains.reject do |domain|
-          Bullion.config.ca.domains.none? { domain["value"].end_with?(_1) }
+          Bullion.config.ca.domains.none? { domain["value"].end_with?(it) }
         end
       end
     end

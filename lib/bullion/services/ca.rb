@@ -121,7 +121,7 @@ module Bullion
         begin
           parse_acme_jwt(header_data["jwk"], validate_nonce: false)
 
-          validate_account_data(@payload_data)
+          account_data_valid?(@payload_data)
         rescue Bullion::Acme::Error => e
           content_type "application/problem+json"
           halt 400, { type: e.acme_error, detail: e.message }.to_json
@@ -186,7 +186,7 @@ module Bullion
         add_acme_headers @new_nonce
 
         {
-          orders: @user.orders.map { |order| uri("/orders/#{order.id}") }
+          orders: @user.orders.map { uri("/orders/#{it.id}") }
         }
       end
 
@@ -196,9 +196,9 @@ module Bullion
         parse_acme_jwt
 
         # Only identifiers of type "dns" are supported
-        identifiers = @payload_data["identifiers"].select { |i| i["type"] == "dns" }
+        identifiers = @payload_data["identifiers"].select { it["type"] == "dns" }
 
-        validate_order(@payload_data)
+        order_valid?(@payload_data)
 
         order = @user.start_order(
           identifiers:,
@@ -215,7 +215,7 @@ module Bullion
           notBefore: order.not_before,
           notAfter: order.not_after,
           identifiers: order.identifiers,
-          authorizations: order.authorizations.map { |a| uri("/authorizations/#{a.id}") },
+          authorizations: order.authorizations.map { uri("/authorizations/#{it.id}") },
           finalize: uri("/orders/#{order.id}/finalize")
         }.to_json
       rescue Bullion::Acme::Error => e
@@ -238,11 +238,11 @@ module Bullion
           notBefore: order.not_before,
           notAfter: order.not_after,
           identifiers: order.identifiers,
-          authorizations: order.authorizations.map { |a| uri("/authorizations/#{a.id}") },
+          authorizations: order.authorizations.map { uri("/authorizations/#{it.id}") },
           finalize: uri("/orders/#{order.id}/finalize")
         }
 
-        data[:certificate] = uri("/certificates/#{order.certificate.id}") if order.status == "valid"
+        data[:certificate] = uri("/certificates/#{order.certificate.id}") if order.valid_status?
 
         data.to_json
       rescue Bullion::Acme::Error => e
@@ -260,14 +260,9 @@ module Bullion
         content_type "application/json"
         add_acme_headers @new_nonce, additional: { "Location" => uri("/orders/#{order.id}") }
 
-        raw_csr_data = Base64.urlsafe_decode64(@payload_data["csr"])
-        encoded_csr = Base64.encode64(raw_csr_data)
+        order_csr = Models::OrderCsr.from_acme_request(order, @payload_data["csr"])
 
-        csr_data = openssl_compat_csr(encoded_csr)
-
-        csr = OpenSSL::X509::Request.new(csr_data)
-
-        unless validate_acme_csr(order, csr)
+        unless acme_csr_valid?(order_csr)
           content_type "application/problem+json"
           halt 400, {
             type: Bullion::Acme::Errors::BadCsr.new.acme_error,
@@ -275,7 +270,7 @@ module Bullion
           }.to_json
         end
 
-        cert_id = sign_csr(csr, @user.contacts.first).last
+        cert_id = sign_csr(order_csr.csr, @user.contacts.first).last
 
         order.certificate_id = cert_id
         order.status = "valid"
@@ -287,11 +282,11 @@ module Bullion
           notBefore: order.not_before,
           notAfter: order.not_after,
           identifiers: order.identifiers,
-          authorizations: order.authorizations.map { |a| uri("/authorizations/#{a.id}") },
+          authorizations: order.authorizations.map { uri("/authorizations/#{it.id}") },
           finalize: uri("/orders/#{order.id}/finalize")
         }
 
-        data[:certificate] = uri("/certificates/#{order.certificate.id}") if order.status == "valid"
+        data[:certificate] = uri("/certificates/#{order.certificate.id}") if order.valid_status?
 
         data.to_json
       rescue Bullion::Acme::Error => e
@@ -320,7 +315,7 @@ module Bullion
             chash[:url] = uri("/challenges/#{c.id}")
             chash[:token] = c.token
             chash[:status] = c.status
-            chash[:validated] = c.validated if c.status == "valid"
+            chash[:validated] = c.validated if c.valid_status?
 
             chash
           end
@@ -355,12 +350,12 @@ module Bullion
           url: uri("/challenges/#{challenge.id}")
         }
 
-        if challenge.status == "valid"
+        if challenge.valid_status?
           data[:validated] = challenge.validated
           authorization = challenge.authorization
-          authorization.update!(status: "valid") unless authorization.status == "valid"
+          authorization.update!(status: "valid") unless authorization.valid_status?
           order = authorization.order
-          order.update!(status: "ready") unless order.status == "ready"
+          order.update!(status: "ready") unless order.ready_status?
         end
 
         add_link_relation("up", uri("/authorizations/#{challenge.authorization.id}"))
@@ -378,7 +373,7 @@ module Bullion
         add_acme_headers @new_nonce
 
         order = Models::Order.where(certificate_id: params[:id]).first
-        if order && order.status == "valid"
+        if order&.valid_status?
           content_type "application/pem-certificate-chain"
 
           cert = Models::Certificate.find(params[:id])

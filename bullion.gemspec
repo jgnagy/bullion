@@ -24,21 +24,21 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = "~> 3.3"
+  spec.required_ruby_version = "~> 3.4"
 
   spec.add_dependency "benchmark",            "~> 0.4"
   spec.add_dependency "dry-configurable",     "~> 1.1"
   spec.add_dependency "httparty",             "~> 0.21"
+  spec.add_dependency "itsi",                 "~> 0.2"
   spec.add_dependency "json",                 "~> 2.6"
   spec.add_dependency "jwt",                  "~> 2.7"
   spec.add_dependency "mysql2",               "~> 0.5"
   spec.add_dependency "openssl",              "~> 3.0"
   spec.add_dependency "prometheus-client",    "~> 4.2"
-  spec.add_dependency "puma",                 "~> 6.4"
   spec.add_dependency "sinatra",              "~> 3.1"
   spec.add_dependency "sinatra-activerecord", "~> 2.0"
   spec.add_dependency "sinatra-contrib",      "~> 3.1"
-  spec.add_dependency "sqlite3",              "~> 2.6"
+  spec.add_dependency "sqlite3",              "~> 2.7"
 
   spec.add_development_dependency "acme-client",         "~> 2.0"
   spec.add_development_dependency "bundler",             "~> 2.4"

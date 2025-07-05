@@ -13,6 +13,13 @@ module Bullion
       }
       validates :status, inclusion: { in: %w[invalid pending processing valid] }
 
+      enum :status, {
+        invalid: "invalid",
+        pending: "pending",
+        processing: "processing",
+        valid: "valid"
+      }, suffix: "status"
+
       def identifier
         authorization.identifier["value"]
       end
@@ -29,7 +36,7 @@ module Bullion
       end
 
       def client
-        challenge_class = Bullion.acme.challenge_clients.find { _1.acme_type == acme_type }
+        challenge_class = Bullion.acme.challenge_clients.find { it.acme_type == acme_type }
 
         unless challenge_class
           raise Bullion::Acme::Errors::UnsupportedChallengeType,

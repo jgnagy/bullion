@@ -13,6 +13,15 @@ module Bullion
 
       validates :status, inclusion: { in: %w[invalid pending ready processing valid deactivated] }
 
+      enum :status, {
+        invalid: "invalid",
+        pending: "pending",
+        ready: "ready",
+        processing: "processing",
+        valid: "valid",
+        deactivated: "deactivated"
+      }, suffix: "status"
+
       def init_values
         self.expires ||= Time.now + (60 * 60)
       end

@@ -10,6 +10,8 @@ module Bullion
 
       validates_presence_of :subject
 
+      has_one :order
+
       def init_values
         self.serial ||= SecureRandom.hex(4).to_i(16)
       end

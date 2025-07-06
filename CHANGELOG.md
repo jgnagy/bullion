@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/jgnagy/bullion/compare/bullion/v0.10.0...bullion/v0.10.1) (2025-07-06)
+
+
+### Features
+
+* enable automatic Docker image builds ([6854692](https://github.com/jgnagy/bullion/commit/685469269d1f7e5b11c3c87bcd814225d5a26d1e))
+
 ## [0.10.0](https://github.com/jgnagy/bullion/compare/bullion/v0.9.0...bullion/v0.10.0) (2025-07-05)
 
 

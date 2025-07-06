@@ -31,3 +31,26 @@ jobs:
 
       - uses: rubygems/release-gem@v1
         if: ${{ steps.release.outputs.release_created }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        if: ${{ steps.release.outputs.release_created }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        if: ${{ steps.release.outputs.release_created }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: jgnagy/bullion:latest,jgnagy/bullion:${{ steps.release.outputs.version }},jgnagy/bullion:${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}

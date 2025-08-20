@@ -118,14 +118,9 @@ module Bullion
       # @see https://tools.ietf.org/html/rfc8555#section-7.3
       post "/accounts" do
         header_data = JSON.parse(Base64.decode64(@json_body[:protected]))
-        begin
-          parse_acme_jwt(header_data["jwk"], validate_nonce: false)
+        parse_acme_jwt(header_data["jwk"], validate_nonce: false)
 
-          account_data_valid?(@payload_data)
-        rescue Bullion::Acme::Error => e
-          content_type "application/problem+json"
-          halt 400, { type: e.acme_error, detail: e.message }.to_json
-        end
+        account_data_valid?(@payload_data)
 
         user = Models::Account.where(
           public_key: header_data["jwk"]
@@ -133,7 +128,10 @@ module Bullion
 
         if @payload_data["onlyReturnExisting"]
           content_type "application/problem+json"
-          halt 400, { type: "urn:ietf:params:acme:error:accountDoesNotExist" }.to_json unless user
+          unless user
+            raise Bullion::Acme::Error::AccountDoesNotExist,
+                  "onlyReturnExisting requested and account does not exist"
+          end
         end
 
         user ||= Models::Account.new(public_key: header_data["jwk"])
@@ -149,6 +147,9 @@ module Bullion
           contact: user.contacts,
           orders: uri("/accounts/#{user.id}/orders")
         }.to_json
+      rescue Bullion::Acme::Error => e
+        content_type "application/problem+json"
+        halt 400, { type: e.acme_error, detail: e.message }.to_json
       end
 
       # Endpoint for updating accounts

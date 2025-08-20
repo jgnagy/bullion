@@ -200,7 +200,7 @@ module Bullion
         # Create a OpenSSL cert using select info from the CSR
         csr_cert = OpenSSL::X509::Certificate.new
         csr_cert.serial = cert.serial
-        csr_cert.version = 3
+        csr_cert.version = 2 # OpenSSL uses zero-indexed versions: 2 = x509v3
         csr_cert.not_before = Time.now
         # only 90 days for ACMEv2
         csr_cert.not_after = csr_cert.not_before + (3 * 30 * 24 * 60 * 60)

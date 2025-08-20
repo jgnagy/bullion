@@ -73,7 +73,7 @@ RSpec/MultipleExpectations:
   Max: 13
 
 RSpec/ExampleLength:
-  Max: 34
+  Max: 40
 
 Gemspec/DevelopmentDependencies:
   Enabled: false

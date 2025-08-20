@@ -129,6 +129,7 @@ RSpec.describe Bullion::Services::CA do
       expect(cert).to start_with("-----BEGIN CERTIFICATE-----\n")
       decoded_cert = OpenSSL::X509::Certificate.new(cert)
       expect(decoded_cert.subject.to_s).to end_with("/CN=#{domain}")
+      expect(decoded_cert.version).to eq(2) # Ensure x509v3 (version 2 in zero-indexed OpenSSL)
       extensions = decoded_cert.extensions.to_h { [it.oid, it.value] }
       expect(extensions["basicConstraints"]).to eq("CA:FALSE")
       expect(extensions["extendedKeyUsage"]).to eq("TLS Web Server Authentication")

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/jgnagy/bullion/compare/bullion/v0.10.1...bullion/v0.10.2) (2025-08-20)
+
+
+### Bug Fixes
+
+* correct x509 certificate version to ensure x509v3 compliance ([0e8f6d7](https://github.com/jgnagy/bullion/commit/0e8f6d7bb6fc9b6913cff84390b1a5c436b53d2c))
+
 ## [0.10.1](https://github.com/jgnagy/bullion/compare/bullion/v0.10.0...bullion/v0.10.1) (2025-07-06)
 
 

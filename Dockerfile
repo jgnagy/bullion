@@ -42,7 +42,8 @@ WORKDIR /app
 
 RUN gem install bullion.gem
 
-USER nobody
+# nobody user is uid 65534
+USER 65534
 
 EXPOSE 9292
 

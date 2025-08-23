@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.11.0](https://github.com/jgnagy/bullion/compare/bullion/v0.10.3...bullion/v0.11.0) (2025-08-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **db:** switch to Trilogy, update db indexes
+
+### Features
+
+* **db:** switch to Trilogy, update db indexes ([42b90b5](https://github.com/jgnagy/bullion/commit/42b90b5977cd497b46654ecf17085715fa6db080))
+
 ## [0.10.3](https://github.com/jgnagy/bullion/compare/bullion/v0.10.2...bullion/v0.10.3) (2025-08-23)
 
 

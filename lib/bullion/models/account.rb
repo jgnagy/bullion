@@ -7,9 +7,16 @@ module Bullion
       serialize :contacts, coder: JSON
       serialize :public_key, coder: JSON
 
-      validates_uniqueness_of :public_key
+      validates_uniqueness_of :public_key_hash
 
       has_many :orders
+
+      before_save :generate_public_key_hash
+
+      def generate_public_key_hash
+        digest = Digest::SHA256.base64digest(public_key.to_json)
+        self.public_key_hash = digest
+      end
 
       def kid
         id

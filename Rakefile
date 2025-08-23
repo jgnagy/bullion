@@ -62,6 +62,7 @@ end
 
 require "openssl"
 require "sqlite3"
+require "trilogy"
 require "sinatra/activerecord/rake"
 
 namespace :db do

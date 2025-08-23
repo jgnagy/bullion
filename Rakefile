@@ -62,6 +62,7 @@ end
 
 require "openssl"
 require "sqlite3"
+require "bigdecimal"
 require "trilogy"
 require "sinatra/activerecord/rake"
 

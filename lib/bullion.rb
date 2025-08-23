@@ -7,6 +7,7 @@ require "securerandom"
 require "time"
 require "logger"
 require "openssl"
+require "bigdecimal"
 
 # External requirements
 require "benchmark"

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.3](https://github.com/jgnagy/bullion/compare/bullion/v0.10.2...bullion/v0.10.3) (2025-08-23)
+
+
+### Bug Fixes
+
+* making nonroot user numeric ([b286249](https://github.com/jgnagy/bullion/commit/b28624969b440d0d7fbc87ebef87a00862295183))
+
 ## [0.10.2](https://github.com/jgnagy/bullion/compare/bullion/v0.10.1...bullion/v0.10.2) (2025-08-20)
 
 

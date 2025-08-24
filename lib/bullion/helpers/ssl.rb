@@ -127,29 +127,12 @@ module Bullion
         )
 
         # Alternate Names
-        cn = cn_from_csr(csr)
-        existing_sans = filter_sans(csr_sans(csr))
-        valid_alts = (["DNS:#{cn}"] + [*existing_sans]).uniq
+        valid_alts = build_valid_alt_names(csr)
 
         new_cert.add_extension(ef.create_extension("subjectAltName", valid_alts.join(",")))
 
         # return the updated cert and any subject alternate names added
         [new_cert, valid_alts]
-      end
-
-      def csr_sans(csr)
-        raw_attributes = csr.attributes
-        return [] unless raw_attributes
-
-        seq = extract_csr_attrs(csr)
-        return [] unless seq
-
-        values = extract_san_values(seq)
-        return [] unless values
-
-        values = OpenSSL::ASN1.decode(values).value
-
-        values.select { |v| v.tag == 2 }.map { |v| "DNS:#{v.value}" }
       end
 
       def extract_csr_attrs(csr)
@@ -161,8 +144,9 @@ module Bullion
       end
 
       def extract_csr_domains(csr_sans)
-        csr_decoded_sans = OpenSSL::ASN1.decode(csr_sans.first.value[1].value)
-        csr_decoded_sans.select { |v| v.tag == 2 }.map(&:value)
+        subject_alt_names = csr_sans.first.value.find { |v| v.tag == 4 }
+        csr_decoded_sans = OpenSSL::ASN1.decode(subject_alt_names.value)
+        csr_decoded_sans.value.select { |v| v.tag == 2 }.map(&:value)
       end
 
       def extract_san_values(sequence)
@@ -184,13 +168,33 @@ module Bullion
       end
 
       def cn_from_csr(csr)
-        if csr.subject.to_s
-          cns = csr.subject.to_s.split("/").grep(/^CN=/)
+        return unless csr.subject.to_s
 
-          return cns.first.split("=").last if cns && !cns.empty?
-        end
+        cns = csr.subject.to_s.split("/").grep(/^CN=/)
 
-        csr_sans(csr).first.split(":").last
+        cns.first.split("=").last if cns && !cns.empty?
+      end
+
+      def cn_or_first_san_from_csr(csr)
+        cn = cn_from_csr(csr)
+        return cn if cn
+
+        csr_attrs = extract_csr_attrs(csr)
+        csr_sans = extract_csr_sans(csr_attrs)
+        extract_csr_domains(csr_sans).first
+      end
+
+      def domains_from_csr(csr)
+        csr_attrs = extract_csr_attrs(csr)
+        csr_sans = extract_csr_sans(csr_attrs)
+        extract_csr_domains(csr_sans)
+      end
+
+      def build_valid_alt_names(csr)
+        cn = cn_or_first_san_from_csr(csr)
+        csr_domains = domains_from_csr(csr)
+        existing_sans = filter_sans(csr_domains).map { |d| "DNS:#{d}" }
+        (["DNS:#{cn}"] + [*existing_sans]).uniq
       end
 
       # Signs an ACME CSR
@@ -206,7 +210,7 @@ module Bullion
         csr_cert.not_after = csr_cert.not_before + (3 * 30 * 24 * 60 * 60)
 
         # Force a subject if the cert doesn't have one
-        cert.subject = simple_subject(cn_from_csr(csr)) unless cert.subject
+        cert.subject = simple_subject(cn_or_first_san_from_csr(csr)) unless cert.subject
 
         csr_cert.subject = simple_subject(cert.subject.to_s)
 

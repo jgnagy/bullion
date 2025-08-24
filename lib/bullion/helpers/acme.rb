@@ -119,13 +119,13 @@ module Bullion
         csr_attrs = extract_csr_attrs(csr)
         csr_sans = extract_csr_sans(csr_attrs)
         csr_domains = extract_csr_domains(csr_sans)
-        csr_cn = cn_from_csr(csr)
+        csr_cn = cn_from_csr(csr) || csr_domains.first
 
         # Make sure the CSR has a valid public key
         raise Bullion::Acme::Errors::BadCsr unless csr.verify(csr.public_key)
 
         return false unless order.ready_status?
-        raise Bullion::Acme::Errors::BadCsr unless csr_domains.include?(csr_cn)
+        raise Bullion::Acme::Errors::BadCsr if csr_cn && !csr_domains.include?(csr_cn)
         raise Bullion::Acme::Errors::BadCsr unless csr_domains.sort == order.domains.sort
 
         true

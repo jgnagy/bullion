@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.1](https://github.com/jgnagy/bullion/compare/bullion/v0.11.0...bullion/v0.11.1) (2025-08-24)
+
+
+### Features
+
+* add support for ECDSA CAs ([49b752e](https://github.com/jgnagy/bullion/commit/49b752ef6fde2b0543b59fb1c5977073f21b6731))
+
+
+### Bug Fixes
+
+* improve detection of SANS for cert-manager ([605f80d](https://github.com/jgnagy/bullion/commit/605f80d97135727ab9a962d6c3078b2b4a74b533))
+* loading required bigdecimal gem ([98d1668](https://github.com/jgnagy/bullion/commit/98d1668da600bba890dd0eb035af4a363fa79eef))
+
 ## [0.11.0](https://github.com/jgnagy/bullion/compare/bullion/v0.10.3...bullion/v0.11.0) (2025-08-23)
 
 

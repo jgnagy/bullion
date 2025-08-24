@@ -69,7 +69,11 @@ module Bullion
   MetricsRegistry = Prometheus::Client.registry
 
   def self.ca_key
-    @ca_key ||= OpenSSL::PKey::RSA.new(File.read(config.ca.key_path), config.ca.secret)
+    @ca_key ||= begin
+      OpenSSL::PKey::RSA.new(File.read(config.ca.key_path), config.ca.secret)
+    rescue OpenSSL::PKey::RSAError
+      OpenSSL::PKey::EC.new(File.read(config.ca.key_path), config.ca.secret)
+    end
   end
 
   def self.ca_cert_file

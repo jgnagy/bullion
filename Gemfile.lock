@@ -8,6 +8,7 @@ PATH
       itsi (~> 0.2)
       json (~> 2.6)
       jwt (~> 2.7)
+      jwt-eddsa (~> 0.9)
       openssl (~> 3.0)
       prometheus-client (~> 4.2)
       sinatra (~> 3.1)
@@ -61,6 +62,7 @@ GEM
       concurrent-ruby (~> 1.0)
       logger
       zeitwerk (~> 2.6)
+    ed25519 (1.4.0)
     faraday (2.13.4)
       faraday-net_http (>= 2.0, < 3.5)
       json
@@ -89,6 +91,10 @@ GEM
     json (2.13.2)
     jwt (2.10.2)
       base64
+    jwt-eddsa (0.9.0)
+      base64
+      ed25519
+      jwt (>= 2.9.0)
     kramdown (2.5.1)
       rexml (>= 3.3.9)
     kramdown-parser-gfm (1.1.0)

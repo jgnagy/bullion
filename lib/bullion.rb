@@ -18,6 +18,8 @@ require "sinatra/custom_logger"
 require "trilogy"
 require "sinatra/activerecord"
 require "jwt"
+require "jwt/eddsa"
+require "ed25519"
 require "prometheus/client"
 require "httparty"
 

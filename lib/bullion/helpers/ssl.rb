@@ -3,6 +3,7 @@
 module Bullion
   module Helpers
     # SSL-related helper methods
+    # rubocop:disable Metrics/ModuleLength
     module Ssl
       # Converts the incoming key data to an OpenSSL public key usable to verify JWT signatures
       def openssl_compat(key_data)
@@ -11,6 +12,8 @@ module Bullion
           key_data_to_rsa(key_data)
         when "EC"
           key_data_to_ecdsa(key_data)
+        when "OKP"
+          key_data_to_eddsa(key_data)
         end
       end
 
@@ -58,6 +61,23 @@ module Bullion
         OpenSSL::PKey::EC.new(outer_sequence.to_der)
       end
 
+      def key_data_to_eddsa(key_data)
+        curve = key_data["crv"]
+        x = base64_to_octet(key_data["x"])
+
+        # For JWT verification with jwt-eddsa gem, we need Ed25519::VerifyKey
+        case curve
+        when "Ed25519"
+          # The raw public key bytes are exactly what Ed25519::VerifyKey expects
+          Ed25519::VerifyKey.new(x)
+        when "Ed448"
+          # Ed448 not currently supported by the ed25519 gem
+          raise "Ed448 is not currently supported"
+        else
+          raise "Unsupported EdDSA curve: #{curve}"
+        end
+      end
+
       def base64_to_long(data)
         Base64.urlsafe_decode64(data).to_s.unpack("C*").map do |byte|
           to_hex(byte)
@@ -69,6 +89,9 @@ module Bullion
       end
 
       def digest_from_alg(alg)
+        # EdDSA doesn't use a separate digest step
+        return nil if alg.downcase == "eddsa"
+
         if alg.end_with?("256")
           OpenSSL::Digest.new("SHA256")
         elsif alg.end_with?("384")
@@ -231,5 +254,6 @@ module Bullion
       end
       # rubocop:enable Metrics/AbcSize
     end
+    # rubocop:enable Metrics/ModuleLength
   end
 end

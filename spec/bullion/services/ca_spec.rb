@@ -475,4 +475,93 @@ RSpec.describe Bullion::Services::CA do
       expect(parsed_body["finalize"]).to match(%r{http://.+/orders/[0-9]+/finalize})
     end
   end
+
+  context "with EdDSA keys" do
+    it "allows new client registrations" do
+      account_key = eddsa_key
+
+      jwk = {
+        typ: "JWT",
+        alg: "EdDSA",
+        jwk: eddsa_public_key_hash(account_key)
+      }.to_json
+
+      encoded_jwk = acme_base64(jwk)
+      payload = {
+        contact: ["mailto:#{account_email}"]
+      }.to_json
+      encoded_payload = acme_base64(payload)
+      signature_data = "#{encoded_jwk}.#{encoded_payload}"
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_sign(account_key, signature_data)
+      }.to_json
+
+      post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response).to be_created
+      expect(last_response.headers["Content-Type"]).to eq("application/json")
+      expect(last_response.headers["Location"]).to match(%r{^http://.+/accounts/[0-9]+$})
+      expect(last_response.body).to be_a(String)
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["status"]).to eq("valid")
+      expect(parsed_body["contact"]).to eq(["mailto:#{account_email}"])
+      expect(parsed_body["orders"]).to match(%r{^http://.+/accounts/[0-9]+/orders$})
+    end
+
+    it "allows submitting new orders" do
+      account_key = eddsa_key
+
+      # Create an account so we can use it
+      Bullion::Models::Account.create(
+        tos_agreed: true,
+        contacts: [account_email],
+        public_key: eddsa_public_key_hash(account_key)
+      )
+
+      get "/nonces"
+
+      nonce = last_response.headers["Replay-Nonce"]
+
+      jwk = {
+        typ: "JWT",
+        alg: "EdDSA",
+        jwk: eddsa_public_key_hash(account_key),
+        nonce:,
+        url: "/orders"
+      }.to_json
+
+      encoded_jwk = acme_base64(jwk)
+      payload = { identifiers: }.to_json
+      encoded_payload = acme_base64(payload)
+      signature_data = "#{encoded_jwk}.#{encoded_payload}"
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_sign(account_key, signature_data)
+      }.to_json
+
+      post "/orders", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response).to be_created
+      expect(last_response.headers["Content-Type"]).to eq("application/json")
+      expect(last_response.headers["Location"]).to match(%r{^http://.+/orders/[0-9]+$})
+      expect(last_response.body).to be_a(String)
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["status"]).to eq("pending")
+      expect(parsed_body).to include("expires")
+      expect(parsed_body).to include("notBefore")
+      expect(parsed_body).to include("notAfter")
+      expect(parsed_body).to include("authorizations")
+      expect(parsed_body["authorizations"]).to be_an(Array)
+      expect(parsed_body["authorizations"].size).to eq(2)
+      expect(parsed_body["identifiers"]).to eq(identifiers)
+      expect(parsed_body["finalize"]).to match(%r{http://.+/orders/[0-9]+/finalize})
+    end
+  end
 end

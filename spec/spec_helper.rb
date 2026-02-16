@@ -30,8 +30,10 @@ module BullionTest
         acme_base64 key.sign(OpenSSL::Digest.new(hash_alg), content)
       elsif key.instance_of?(OpenSSL::PKey::EC)
         ecdsa_acme_sign(key, content, hash_alg:)
+      elsif key.is_a?(OpenSSL::PKey::PKey) && %w[ED25519 ED448].include?(key.oid)
+        eddsa_acme_sign(key, content)
       else
-        raise "Unknown key class"
+        raise "Unknown key class: #{key.class}"
       end
     end
 
@@ -82,6 +84,42 @@ module BullionTest
       bytes = (key.group.degree + 7) / 8
       r_val, s_val = big_ints.map { it.to_s(2).rjust(bytes, "\x00") }
       acme_base64 [r_val, s_val].join
+    end
+
+    def eddsa_key(crv = "Ed25519")
+      case crv
+      when "Ed25519"
+        @eddsa_key ||= OpenSSL::PKey.generate_key("ED25519")
+      when "Ed448"
+        @eddsa_key ||= OpenSSL::PKey.generate_key("ED448")
+      else
+        raise "Unsupported EdDSA curve: #{crv}"
+      end
+    end
+
+    def eddsa_public_key_hash(key, crv = "Ed25519")
+      # For EdDSA, the public key is the raw bytes
+      public_key_bytes = key.public_to_der
+      # Extract the actual public key bytes from the DER encoding
+      # For Ed25519, it's the last 32 bytes; for Ed448, it's the last 57 bytes
+      public_key_raw = case crv
+                       when "Ed25519"
+                         public_key_bytes[-32..]
+                       when "Ed448"
+                         public_key_bytes[-57..]
+                       else
+                         raise "Unsupported EdDSA curve: #{crv}"
+                       end
+      {
+        "x" => acme_base64(public_key_raw),
+        "kty" => "OKP",
+        "crv" => crv
+      }
+    end
+
+    def eddsa_acme_sign(key, content)
+      signature = key.sign(nil, content)
+      acme_base64(signature)
     end
   end
 end

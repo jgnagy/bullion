@@ -41,10 +41,11 @@ module Bullion
           JWT.decode(jwt_data, compat_public_key, true, { algorithm: @header_data["alg"] })
         else
           digest = digest_from_alg(@header_data["alg"])
+          alg = @header_data["alg"].downcase
 
-          sig = if @header_data["alg"].downcase.start_with?("es")
+          sig = if alg.start_with?("es")
                   ecdsa_sig_to_der(signature)
-                elsif @header_data["alg"].downcase.start_with?("rs")
+                elsif alg.start_with?("rs") || alg == "eddsa"
                   Base64.urlsafe_decode64(signature)
                 end
 

@@ -50,7 +50,17 @@ module Bullion
 
       def lexicographically_ordered_public_key
         jwk = authorization.order.account.public_key
-        [["e", jwk["e"]], ["kty", jwk["kty"]], ["n", jwk["n"]]].to_h
+        case jwk["kty"]
+        when "RSA"
+          [["e", jwk["e"]], ["kty", jwk["kty"]], ["n", jwk["n"]]].to_h
+        when "EC"
+          [["crv", jwk["crv"]], ["kty", jwk["kty"]], ["x", jwk["x"]], ["y", jwk["y"]]].to_h
+        when "OKP"
+          [["crv", jwk["crv"]], ["kty", jwk["kty"]], ["x", jwk["x"]]].to_h
+        else
+          # Fallback for unknown types
+          jwk.sort.to_h
+        end
       end
     end
   end

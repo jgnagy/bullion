@@ -49,5 +49,28 @@ RSpec.describe Bullion::Models::Account do
         expect(order.errors).to be_empty
       end
     end
+
+    describe "with EdDSA keys" do
+      let(:account_key) { eddsa_key("Ed25519") }
+
+      let(:public_key_hash) { eddsa_public_key_hash(account_key, "Ed25519") }
+
+      let(:basic_account) do
+        user_email = "ed.jones@example.com"
+        described_class.new(
+          tos_agreed: true,
+          contacts: [user_email],
+          public_key: public_key_hash
+        )
+      end
+
+      it("creates new accounts") { expect(basic_account.save).to be_truthy }
+
+      it "allows starting new orders" do
+        basic_account.save
+        order = basic_account.start_order(identifiers: ["test.example.com"])
+        expect(order.errors).to be_empty
+      end
+    end
   end
 end

@@ -32,4 +32,34 @@ RSpec.describe Bullion::Models::Certificate do
   it "supports looking up the CN after creation" do
     expect(subject.cn).to eq("foo.example.com")
   end
+
+  context "with Ed25519 keys" do
+    let(:ed_key) do
+      OpenSSL::PKey.generate_key("Ed25519")
+    end
+
+    let(:ed_csr) do
+      csr = OpenSSL::X509::Request.new
+      csr.version = 0
+      csr.subject = OpenSSL::X509::Name.new([["CN", "ed25519.example.com"]])
+      csr.public_key = ed_key
+      csr.sign(ed_key, nil)
+      csr
+    end
+
+    let(:ed_cert) do
+      cert = described_class.from_csr(ed_csr)
+      cert.data = ed_csr.to_pem
+      cert.requester = "ed25519_test"
+      cert
+    end
+
+    it "supports fingerprinting Ed25519 certificates" do
+      expect(ed_cert.fingerprint).to be_a(String)
+    end
+
+    it "supports looking up the CN from Ed25519 certificates" do
+      expect(ed_cert.cn).to eq("ed25519.example.com")
+    end
+  end
 end

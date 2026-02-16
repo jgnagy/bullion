@@ -121,6 +121,27 @@ module BullionTest
       signature = key.sign(nil, content)
       acme_base64(signature)
     end
+
+    def eddsa_csr(domains: ["test.example.com"], key: nil)
+      key ||= eddsa_key
+      csr = OpenSSL::X509::Request.new
+      csr.version = 0
+      csr.subject = OpenSSL::X509::Name.new([["CN", domains.first]])
+      csr.public_key = key
+
+      # Add SANs if multiple domains
+      if domains.length > 1
+        factory = OpenSSL::X509::ExtensionFactory.new
+        exts = [factory.create_extension("subjectAltName", domains.map do |d|
+          "DNS:#{d}"
+        end.join(","))]
+        attr_set = OpenSSL::ASN1::Set([OpenSSL::ASN1::Sequence(exts)])
+        csr.add_attribute(OpenSSL::X509::Attribute.new("extReq", attr_set))
+      end
+
+      csr.sign(key, nil) # Ed25519 doesn't use a separate digest
+      csr
+    end
   end
 end
 

@@ -135,6 +135,33 @@ RSpec.describe Bullion::Services::CA do
       expect(extensions["extendedKeyUsage"]).to eq("TLS Web Server Authentication")
       expect(extensions["subjectAltName"]).to eq("DNS:blammo.test.domain")
     end
+
+    it "provides valid signed certificates for Ed25519 keys" do
+      cert_key = OpenSSL::PKey.generate_key("Ed25519")
+      domain = "ed25519.test.domain"
+      acme_order = @acme_client.new_order(identifiers: [domain])
+      authorization = acme_order.authorizations.first
+      challenge = authorization.http
+      challenge.request_validation
+      challenge.reload
+      csr = Acme::Client::CertificateRequest.new(
+        private_key: cert_key,
+        subject: { common_name: domain },
+        digest: nil # Ed25519 doesn't use a separate digest
+      )
+      acme_order.finalize(csr:)
+      expect(challenge.status).to eq("valid")
+      cert = acme_order.certificate
+      expect(cert).to start_with("-----BEGIN CERTIFICATE-----\n")
+      decoded_cert = OpenSSL::X509::Certificate.new(cert)
+      expect(decoded_cert.subject.to_s).to end_with("/CN=#{domain}")
+      expect(decoded_cert.version).to eq(2)
+      expect(decoded_cert.public_key.oid).to eq("ED25519")
+      extensions = decoded_cert.extensions.to_h { [it.oid, it.value] }
+      expect(extensions["basicConstraints"]).to eq("CA:FALSE")
+      expect(extensions["extendedKeyUsage"]).to eq("TLS Web Server Authentication")
+      expect(extensions["subjectAltName"]).to eq("DNS:ed25519.test.domain")
+    end
   end
 
   describe "invalid requests" do

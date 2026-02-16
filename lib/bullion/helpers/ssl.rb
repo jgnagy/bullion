@@ -72,9 +72,10 @@ module Bullion
           Ed25519::VerifyKey.new(x)
         when "Ed448"
           # Ed448 not currently supported by the ed25519 gem
-          raise "Ed448 is not currently supported"
+          raise Bullion::Acme::Errors::BadPublicKey,
+                "EdDSA with Ed448 is not supported; only Ed25519 is supported"
         else
-          raise "Unsupported EdDSA curve: #{curve}"
+          raise Bullion::Acme::Errors::BadPublicKey, "Unsupported EdDSA curve: #{curve}"
         end
       end
 

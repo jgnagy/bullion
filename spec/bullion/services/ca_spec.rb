@@ -563,5 +563,44 @@ RSpec.describe Bullion::Services::CA do
       expect(parsed_body["identifiers"]).to eq(identifiers)
       expect(parsed_body["finalize"]).to match(%r{http://.+/orders/[0-9]+/finalize})
     end
+
+    it "rejects Ed448 with badPublicKey error" do
+      # Create a mock Ed448 public key hash (Ed448 has 57-byte public keys)
+      ed448_jwk = {
+        kty: "OKP",
+        crv: "Ed448",
+        x: Base64.urlsafe_encode64("a" * 57, padding: false)
+      }
+
+      jwk = {
+        typ: "JWT",
+        alg: "EdDSA",
+        jwk: ed448_jwk
+      }.to_json
+
+      encoded_jwk = acme_base64(jwk)
+      payload = {
+        contact: ["mailto:#{account_email}"]
+      }.to_json
+      encoded_payload = acme_base64(payload)
+
+      # We can't actually sign with Ed448, but we'll send a dummy signature
+      # The error should occur during key parsing, before signature verification
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_base64("dummy_signature")
+      }.to_json
+
+      post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to eq("urn:ietf:params:acme:error:badPublicKey")
+      expect(parsed_body["detail"]).to include("Ed448")
+      expect(parsed_body["detail"]).to include("Ed25519")
+    end
   end
 end

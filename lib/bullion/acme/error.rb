@@ -34,6 +34,11 @@ module Bullion
         def acme_type = "badNonce"
       end
 
+      # ACME exception for bad/unsupported public keys
+      class BadPublicKey < Bullion::Acme::Error
+        def acme_type = "badPublicKey"
+      end
+
       # ACME exception for invalid contacts in accounts
       class InvalidContact < Bullion::Acme::Error
         def acme_type = "invalidContact"

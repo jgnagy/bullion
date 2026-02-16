@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.11.2](https://github.com/jgnagy/bullion/compare/bullion/v0.11.1...bullion/v0.11.2) (2026-02-16)
+
+
+### Features
+
+* add EdDSA (Ed25519) JWT signature support ([bba2985](https://github.com/jgnagy/bullion/commit/bba29851e1c5644152f4a3e82d82c6c1d5c5ce5e))
+* add EdDSA (Ed25519) JWT signature support ([77a2f5b](https://github.com/jgnagy/bullion/commit/77a2f5bfc30db3527ad3fe75136b210956279957)), closes [#3](https://github.com/jgnagy/bullion/issues/3)
+* Add test coverage for Ed25519 certificate signing ([59f0f74](https://github.com/jgnagy/bullion/commit/59f0f74a039292a5d804c8e49a880f20ab5d0c1b))
+
+
+### Bug Fixes
+
+* return proper badPublicKey error for Ed448 ([a21414f](https://github.com/jgnagy/bullion/commit/a21414f66075d47e2b5613d2034fa806a0a78602))
+
 ## [0.11.1](https://github.com/jgnagy/bullion/compare/bullion/v0.11.0...bullion/v0.11.1) (2025-08-24)
 
 

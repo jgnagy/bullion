@@ -31,7 +31,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "httparty",             "~> 0.21"
   spec.add_dependency "itsi",                 "~> 0.2"
   spec.add_dependency "json",                 "~> 2.6"
-  spec.add_dependency "jwt",                  "~> 2.7"
+  spec.add_dependency "jwt",                  ">= 2.7", "< 4.0"
   spec.add_dependency "jwt-eddsa",            "~> 0.9"
   spec.add_dependency "openssl",              "~> 3.0"
   spec.add_dependency "prometheus-client",    "~> 4.2"

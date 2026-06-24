@@ -88,7 +88,7 @@ GEM
       rack (>= 1.6)
       rb_sys (~> 0.9.91)
     jaro_winkler (1.6.1)
-    json (2.18.1)
+    json (2.19.2)
     jwt (2.10.2)
       base64
     jwt-eddsa (0.9.0)

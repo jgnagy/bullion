@@ -107,11 +107,11 @@ module Bullion
       raise ConfigError,
             "Invalid Cert Path: #{config.ca.cert_path}"
     end
-    if 60 * 60 * 24 * 397 < config.ca.cert_validity_duration
+    if config.ca.cert_validity_duration > 60 * 60 * 24 * 397
       raise ConfigError,
             "Cert Validity Too Long"
     end
-    if 60 * 60 * 24 * 2 > config.ca.cert_validity_duration
+    if config.ca.cert_validity_duration < 60 * 60 * 24 * 2
       raise ConfigError,
             "Cert Validity Too Short"
     end

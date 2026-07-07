@@ -10,24 +10,24 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_08_23_073342) do
+ActiveRecord::Schema[8.1].define(version: 2025_08_23_073342) do
   create_table "accounts", force: :cascade do |t|
-    t.boolean "tos_agreed", default: true, null: false
-    t.text "public_key", null: false
     t.text "contacts", null: false
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.text "public_key", null: false
     t.string "public_key_hash", limit: 44, null: false
+    t.boolean "tos_agreed", default: true, null: false
+    t.datetime "updated_at", null: false
     t.index ["public_key_hash"], name: "index_accounts_on_public_key_hash", unique: true
     t.index ["tos_agreed"], name: "index_accounts_on_tos_agreed"
   end
 
   create_table "authorizations", force: :cascade do |t|
-    t.string "status", default: "pending", null: false
+    t.datetime "created_at", null: false
     t.datetime "expires", null: false
     t.text "identifier", null: false
     t.bigint "order_id"
-    t.datetime "created_at", null: false
+    t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.index ["expires"], name: "index_authorizations_on_expires"
     t.index ["order_id"], name: "index_authorizations_on_order_id"
@@ -35,15 +35,15 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_073342) do
   end
 
   create_table "certificates", force: :cascade do |t|
-    t.string "subject", null: false
+    t.text "alternate_names"
+    t.datetime "created_at", null: false
     t.string "csr_fingerprint", null: false
     t.text "data", null: false
-    t.text "alternate_names"
     t.string "requester"
-    t.boolean "validated", default: false, null: false
     t.bigint "serial", null: false
-    t.datetime "created_at", null: false
+    t.string "subject", null: false
     t.datetime "updated_at", null: false
+    t.boolean "validated", default: false, null: false
     t.index ["csr_fingerprint"], name: "index_certificates_on_csr_fingerprint"
     t.index ["serial"], name: "index_certificates_on_serial", unique: true
     t.index ["subject"], name: "index_certificates_on_subject"
@@ -52,13 +52,13 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_073342) do
 
   create_table "challenges", force: :cascade do |t|
     t.string "acme_type", null: false
-    t.string "status", default: "pending", null: false
-    t.datetime "expires", null: false
-    t.string "token", null: false
-    t.datetime "validated"
     t.bigint "authorization_id"
     t.datetime "created_at", null: false
+    t.datetime "expires", null: false
+    t.string "status", default: "pending", null: false
+    t.string "token", null: false
     t.datetime "updated_at", null: false
+    t.datetime "validated"
     t.index ["acme_type"], name: "index_challenges_on_acme_type"
     t.index ["authorization_id"], name: "index_challenges_on_authorization_id"
     t.index ["expires"], name: "index_challenges_on_expires"
@@ -66,21 +66,21 @@ ActiveRecord::Schema[8.0].define(version: 2025_08_23_073342) do
   end
 
   create_table "nonces", force: :cascade do |t|
-    t.string "token", null: false
     t.datetime "created_at", null: false
+    t.string "token", null: false
     t.datetime "updated_at", null: false
     t.index ["token"], name: "index_nonces_on_token", unique: true
   end
 
   create_table "orders", force: :cascade do |t|
-    t.string "status", default: "pending", null: false
+    t.bigint "account_id"
+    t.bigint "certificate_id"
+    t.datetime "created_at", null: false
     t.datetime "expires", null: false
     t.text "identifiers", null: false
-    t.datetime "not_before", null: false
     t.datetime "not_after", null: false
-    t.bigint "certificate_id"
-    t.bigint "account_id"
-    t.datetime "created_at", null: false
+    t.datetime "not_before", null: false
+    t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_orders_on_account_id"
     t.index ["certificate_id"], name: "index_orders_on_certificate_id"

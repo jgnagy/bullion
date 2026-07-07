@@ -8,6 +8,7 @@ module Bullion
 
     configure do
       set :protection, except: :http_origin
+      set :host_authorization, permitted_hosts: []
       set :logging, true
       set :logger, Bullion::LOGGER
       set :database, Bullion.config.db_url

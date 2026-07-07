@@ -5,6 +5,7 @@ module Bullion
     # Healthcheck service
     class Ping < Sinatra::Application
       configure do
+        set :host_authorization, permitted_hosts: []
         set :logging, true
         set :logger, Bullion::LOGGER
       end

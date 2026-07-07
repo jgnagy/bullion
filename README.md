@@ -4,7 +4,7 @@
 
 Bullion is an [ACMEv2](https://tools.ietf.org/html/rfc8555)-compatible Certificate Authority (just like [Let's Encrypt](https://letsencrypt.org/)). Bullion makes it easy to leverage open standards for provisioning certificates for internal sites and services. Things like [cert-manager](https://cert-manager.io/), [certbot](https://certbot.eff.org/), and many other technologies work great with Let's Encrypt for _external_ hostnames, but for private domains and servers that aren't Internet accessible, there are few easy options.
 
-Bullion installs easily (both as a ruby gem or a Docker image) and will shortly come with Kubernetes examples and even a helm chart to make installing it that much easier. For its data, Bullion works with either [SQLite3](https://sqlite.org/index.html) for very small sites (where HA and high-throughput isn't a concern) or with [MariaDB](https://mariadb.org/)/[MySQL](https://www.mysql.com/).
+Bullion installs easily (both as a ruby gem or a Docker image) and works with either [SQLite3](https://sqlite.org/index.html) for very small sites (where HA and high-throughput isn't a concern) or with [MariaDB](https://mariadb.org/)/[MySQL](https://www.mysql.com/) for production deployments.
 
 The goal of the Bullion project is to make running a scalable, internal ACMEv2 CA easy. Either make a custom root CA certificate or give Bullion a signed intermediary to use in simple, compatible PEM format and you're up and running.
 
@@ -20,9 +20,133 @@ The goal of the Bullion project is to make running a scalable, internal ACMEv2 C
 
 ## Usage
 
-### Running
+### Prerequisites
 
-TODO: Write instructions for starting Bullion
+Before running Bullion, you need a CA key pair. Bullion requires two PEM files:
+
+- **`tls.key`** — An encrypted private key (RSA, ECDSA, or EdDSA) for signing certificates. Bullion supports encrypted PEM keys using AES-128-CBC.
+- **`tls.crt`** — The corresponding public certificate. If Bullion is an intermediate CA, include the root CA's certificate in this file as well (certificate chain order: intermediate first, then root).
+
+You can generate these with OpenSSL. For example, a self-signed root CA:
+
+```bash
+# Generate an encrypted RSA private key
+openssl genrsa -aes128 -out tls.key 4096
+
+# Create a self-signed root certificate (5 years)
+openssl req -x509 -new -key tls.key -sha256 -days 1825 \
+  -out tls.crt -subj "/DC=example/DC=com/CN=Bullion Root CA"
+```
+
+For production, you'll typically want an intermediate CA signed by your organization's root CA. Provide the intermediate certificate and its private key to Bullion, and include the root CA certificate in `tls.crt` so clients receive the full chain.
+
+### Running with Docker
+
+The quickest way to run Bullion is with the official Docker image:
+
+```bash
+docker run -d \
+  --name bullion \
+  -p 9292:9292 \
+  -v /path/to/ssl:/ssl:ro \
+  -v /path/to/data:/data \
+  -e CA_DIR=/ssl \
+  -e CA_SECRET=your-key-password \
+  -e CA_DOMAINS=example.com \
+  -e DATABASE_URL=sqlite3:/data/bullion.db \
+  jgnagy/bullion:latest
+```
+
+This starts Bullion on port 9292 with:
+
+- CA key pair mounted from `/path/to/ssl` (containing `tls.key` and `tls.crt`)
+- SQLite database persisted at `/path/to/data/bullion.db`
+- Certificate signing restricted to `example.com` and its subdomains
+
+Verify it's running:
+
+```bash
+curl http://localhost:9292/ping
+# {"status":"up"}
+```
+
+For MySQL/MariaDB, use a `trilogy://` connection URL instead:
+
+```bash
+-e DATABASE_URL=trilogy://user:password@mariadb:3306/bullion
+```
+
+### Running as a Gem
+
+Install the gem:
+
+```bash
+gem install bullion
+```
+
+Bullion is a Rack application served by [Itsi](https://itsi.fyi/). After installing the gem, you'll need a `config.ru` and an `Itsi.rb` configuration file. The simplest approach is to create a working directory with your CA key pair and a minimal Rack config:
+
+```bash
+mkdir bullion-server && cd bullion-server
+
+# Place your CA key pair here
+cp /path/to/tls.key .
+cp /path/to/tls.crt
+
+# Create a minimal config.ru
+cat > config.ru <<'RUBY'
+# frozen_string_literal: true
+
+require "bullion"
+Bullion.validate_config!
+
+require "prometheus/middleware/collector"
+require "prometheus/middleware/exporter"
+
+use Rack::ShowExceptions
+use Rack::Deflater
+use Prometheus::Middleware::Collector
+use Prometheus::Middleware::Exporter
+
+mappings = {
+  "/ping" => Bullion::Services::Ping.new,
+  "/acme" => Bullion::Services::CA.new
+}
+
+run Rack::URLMap.new(mappings)
+RUBY
+
+# Initialize Itsi and run database migrations
+itsi init
+DATABASE_URL=sqlite3:./bullion.db bullion-exec rake db:migrate
+
+# Start the server
+CA_DIR=. CA_SECRET=your-key-password CA_DOMAINS=example.com \
+  DATABASE_URL=sqlite3:./bullion.db itsi
+```
+
+### Database Setup
+
+Bullion uses ActiveRecord migrations to create its schema. The migrations are included with the gem. Run them before starting the server:
+
+```bash
+DATABASE_URL=sqlite3:./bullion.db bundle exec rake db:migrate
+```
+
+When using Docker, the included entrypoint handles this automatically on first start. If you're running the gem directly, you may need to run migrations manually after installing the gem.
+
+### Quick Local Demo
+
+For testing or evaluation, the Rakefile includes a `local_demo` task that generates a temporary CA key pair, runs migrations, and starts the server in the foreground:
+
+```bash
+git clone https://github.com/jgnagy/bullion.git
+cd bullion
+bundle install
+bundle exec rake local_demo
+```
+
+This creates a self-signed root CA and intermediate certificate in `tmp/`, uses an SQLite database in `tmp/db/`, and starts Bullion on port 9292. Press `Ctrl+C` to stop.
 
 ### Configuration Options
 

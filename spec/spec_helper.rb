@@ -59,7 +59,7 @@ module BullionTest
     end
 
     def ecdsa_key(crv = "P-256")
-      @ecdsa_key ||= OpenSSL::PKey::EC.generate(ecsda_crv_to_openssl(crv))
+      OpenSSL::PKey::EC.generate(ecsda_crv_to_openssl(crv))
     end
 
     def ecdsa_public_key_hash(key, crv = "P-256")
@@ -89,9 +89,9 @@ module BullionTest
     def eddsa_key(crv = "Ed25519")
       case crv
       when "Ed25519"
-        @eddsa_key ||= OpenSSL::PKey.generate_key("ED25519")
+        OpenSSL::PKey.generate_key("ED25519")
       when "Ed448"
-        @eddsa_key ||= OpenSSL::PKey.generate_key("ED448")
+        OpenSSL::PKey.generate_key("ED448")
       else
         raise "Unsupported EdDSA curve: #{crv}"
       end

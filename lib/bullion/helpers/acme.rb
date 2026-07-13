@@ -174,7 +174,7 @@ module Bullion
         # don't allow nonsense certs
         raise Bullion::Acme::Errors::InvalidOrder unless nb < na
         # don't allow far-future certs
-        if nb > Time.now + (7 * 86_400) || na > Time.now + CERT_VALIDITY_DURATION
+        if nb > Time.now + (7 * 86_400) || na > Time.now + Bullion.config.ca.cert_validity_duration
           raise Bullion::Acme::Errors::InvalidOrder
         end
 

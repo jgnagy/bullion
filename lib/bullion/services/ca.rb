@@ -400,7 +400,7 @@ module Bullion
         cert = OpenSSL::X509::Certificate.new(cert_der)
 
         # Find the certificate in the database by matching the PEM data
-        record = Models::Certificate.where(data: cert.to_pem).first
+        record = Models::Certificate.where(serial: cert.serial.to_i).first
 
         unless record
           content_type "application/problem+json"

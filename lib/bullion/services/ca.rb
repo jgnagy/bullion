@@ -66,6 +66,10 @@ module Bullion
         halt 200
       end
 
+      options "/revokecert" do
+        halt 200
+      end
+
       # Non-standard endpoint that returns the CA bundle for Bullion
       # Trusting this bundle should be sufficient to trust all Bullion-issued certs
       options "/cabundle" do
@@ -383,6 +387,44 @@ module Bullion
         else
           halt(422, { error: "Order not valid" }.to_json)
         end
+      end
+
+      # Revokes a certificate
+      # @see https://tools.ietf.org/html/rfc8555#section-7.6
+      post "/revokecert" do
+        parse_acme_jwt
+        add_acme_headers @new_nonce
+
+        # The certificate is base64url-encoded DER
+        cert_der = Base64.urlsafe_decode64(@payload_data["certificate"])
+        cert = OpenSSL::X509::Certificate.new(cert_der)
+
+        # Find the certificate in the database by matching the PEM data
+        record = Models::Certificate.where(data: cert.to_pem).first
+
+        unless record
+          content_type "application/problem+json"
+          halt 400, {
+            type: Bullion::Acme::Errors::BadCertificate.new.acme_error,
+            detail: "Certificate not found"
+          }.to_json
+        end
+
+        if record.revoked?
+          content_type "application/problem+json"
+          halt 400, {
+            type: Bullion::Acme::Errors::AlreadyRevoked.new.acme_error,
+            detail: "Certificate has already been revoked"
+          }.to_json
+        end
+
+        reason = @payload_data["reason"]
+        record.update!(revoked: true, revoked_at: Time.now, revocation_reason: reason)
+
+        halt 200
+      rescue Bullion::Acme::Error => e
+        content_type "application/problem+json"
+        halt 400, { type: e.acme_error, detail: e.message }.to_json
       end
     end
   end

@@ -39,6 +39,16 @@ module Bullion
         def acme_type = "badPublicKey"
       end
 
+      # ACME exception for bad certificates
+      class BadCertificate < Bullion::Acme::Error
+        def acme_type = "badCertificate"
+      end
+
+      # ACME exception for already-revoked certificates
+      class AlreadyRevoked < Bullion::Acme::Error
+        def acme_type = "alreadyRevoked"
+      end
+
       # ACME exception for invalid contacts in accounts
       class InvalidContact < Bullion::Acme::Error
         def acme_type = "invalidContact"

@@ -24,6 +24,11 @@ module Bullion
         subject.split("/").grep(/^CN=/).first.split("=").last
       end
 
+      # Returns true if the certificate has been revoked
+      def revoked?
+        revoked == true
+      end
+
       def self.from_csr(csr)
         subjt = csr.subject if csr.subject && !csr.subject.to_s.empty?
 

@@ -33,7 +33,7 @@ Metrics/ModuleLength:
   - 'spec/**/*_spec.rb'
 
 Metrics/ClassLength:
-  Max: 300
+  Max: 350
   Exclude:
   - 'spec/**/*_spec.rb'
 

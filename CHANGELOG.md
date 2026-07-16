@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.3](https://github.com/jgnagy/bullion/compare/bullion/v0.11.2...bullion/v0.11.3) (2026-07-16)
+
+
+### Features
+
+* implement revokeCert endpoint (closes [#1](https://github.com/jgnagy/bullion/issues/1)) ([#107](https://github.com/jgnagy/bullion/issues/107)) ([b08c65a](https://github.com/jgnagy/bullion/commit/b08c65a7cbb62abef34d7a24fe7f89124fae4743))
+
+
+### Bug Fixes
+
+* replace undefined CERT_VALIDITY_DURATION constant with config call ([f858418](https://github.com/jgnagy/bullion/commit/f85841818f6d3511e436c010af86715433c57922))
+* replace undefined CERT_VALIDITY_DURATION constant with config call ([8dc0ed0](https://github.com/jgnagy/bullion/commit/8dc0ed0dabdca4d50f720e22ce7d6825233042bb)), closes [#101](https://github.com/jgnagy/bullion/issues/101)
+
 ## [0.11.2](https://github.com/jgnagy/bullion/compare/bullion/v0.11.1...bullion/v0.11.2) (2026-02-16)
 
 

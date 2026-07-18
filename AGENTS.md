@@ -20,7 +20,7 @@ All three must pass before opening a PR. These run in CI (`.github/workflows/ci.
 
 ```bash
 bundle exec rubocop          # Style/lint
-bundle exec rake spec        # Unit tests (integration specs excluded by default)
+bundle exec rake unit        # Unit tests (integration specs excluded by default)
 bundle exec rake yard        # YARD documentation generation
 ```
 

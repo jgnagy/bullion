@@ -14,7 +14,7 @@ Thanks for your interest in contributing! This document covers the expectations 
 
 1. Fork the repo and clone your fork.
 2. Run `bin/setup` to install dependencies.
-3. Run `rake spec` to verify a clean baseline.
+3. Run `bundle exec rake test` to verify a clean baseline and to ensure your test environment is working properly.
 4. Use `bin/console` for an interactive prompt to experiment.
 
 ## Development Workflow
@@ -25,7 +25,7 @@ Thanks for your interest in contributing! This document covers the expectations 
 
    ```bash
    bundle exec rubocop
-   bundle exec rake spec
+   bundle exec rake test
    bundle exec rake yard
    ```
 
@@ -33,11 +33,13 @@ Thanks for your interest in contributing! This document covers the expectations 
 
 ### Integration Tests
 
-The default `rake spec` task excludes integration specs. Run them separately with:
+The `rake unit` task excludes integration specs. Run them separately with:
 
 ```bash
 bundle exec rake integration_testing
 ```
+
+Or use `rake test` to run both.
 
 Integration specs are not required for PRs but are appreciated for changes that affect ACME protocol flows.
 

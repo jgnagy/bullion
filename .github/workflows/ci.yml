@@ -54,3 +54,31 @@ jobs:
       
       - name: Run tests
         run: bundle exec rake test
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      # The release image is built from a BuildKit Git context that strips the
+      # `.git` directory. Building the gem in a context without git metadata
+      # ensures the gemspec does not silently produce an empty package.
+      - name: Verify gem packages files without git metadata
+        run: |
+          rm -rf "$RUNNER_TEMP/gem-context"
+          mkdir -p "$RUNNER_TEMP/gem-context"
+          tar --exclude='.git' --exclude='./vendor' -cf - . | tar -xf - -C "$RUNNER_TEMP/gem-context"
+          cd "$RUNNER_TEMP/gem-context"
+          gem build bullion.gemspec
+          ruby -e 'require "rubygems/package"; spec = Gem::Package.new(Dir["bullion-*.gem"].first).spec; abort "gem package contains no files" if spec.files.empty?; puts "gem contains #{spec.files.size} files"'
+          gem unpack bullion-*.gem
+          DATABASE_URL=sqlite3:///tmp/bullion-ci.db BUNDLE_GEMFILE="$GITHUB_WORKSPACE/Gemfile" \
+            bundle exec ruby -I "$(ls -d bullion-*/lib | head -1)" \
+            -e 'require "bullion"; puts "require bullion OK (#{Bullion::VERSION})"'

@@ -29,8 +29,14 @@ jobs:
           bundler-cache: true
           ruby-version: .ruby-version
 
+      # Attestations inject a pre-bundler RUBYOPT patch that requires
+      # rubygems/commands/push_command, activating the default openssl gem
+      # before bundler runs. That conflicts with the gemspec's openssl
+      # dependency and makes `bundle exec rake release` raise Gem::LoadError.
       - uses: rubygems/release-gem@v1
         if: ${{ steps.release.outputs.release_created }}
+        with:
+          attestations: false
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3

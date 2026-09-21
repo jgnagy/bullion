@@ -16,9 +16,23 @@ Gem::Specification.new do |spec|
   spec.metadata["source_code_uri"] = "https://github.com/jgnagy/bullion"
 
   # Specify which files should be added to the gem when it is released.
-  # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
+  # This must not rely on `git ls-files`, because the release image is built
+  # from a BuildKit Git context that strips the `.git` directory, which would
+  # produce a gem with no files and a resulting `LoadError` at runtime.
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
-    `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
+    Dir[
+      "lib/**/*",
+      "exe/**/*",
+      "bin/*",
+      "db/**/*",
+      "config.ru",
+      "Itsi.rb",
+      "Rakefile",
+      "README.md",
+      "CHANGELOG.md",
+      "LICENSE.txt",
+      ".ruby-version"
+    ].select { |f| File.file?(f) }
   end
   spec.bindir        = "exe"
   spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }

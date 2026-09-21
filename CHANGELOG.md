@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.5](https://github.com/jgnagy/bullion/compare/bullion/v0.11.4...bullion/v0.11.5) (2026-09-21)
+
+
+### Bug Fixes
+
+* **ci:** disable gem attestations to unblock release ([d850693](https://github.com/jgnagy/bullion/commit/d850693bc3ca6c58b15471cea773f0c58df1b0b1))
+* **ci:** disable gem attestations to unblock release ([5bd3675](https://github.com/jgnagy/bullion/commit/5bd367593fc1bc4af1c71f27d2ed4bedbff2ad5c))
+
 ## [0.11.4](https://github.com/jgnagy/bullion/compare/bullion/v0.11.3...bullion/v0.11.4) (2026-09-21)
 
 

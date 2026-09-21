@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.4](https://github.com/jgnagy/bullion/compare/bullion/v0.11.3...bullion/v0.11.4) (2026-09-21)
+
+
+### Bug Fixes
+
+* package gem files without relying on git metadata ([ef70f0a](https://github.com/jgnagy/bullion/commit/ef70f0a42285aab8ae8bde1f8f0063e6a0ad38cb))
+* package gem files without relying on git metadata ([8515841](https://github.com/jgnagy/bullion/commit/851584156440fef014503a9b3320049554a9083e))
+
 ## [0.11.3](https://github.com/jgnagy/bullion/compare/bullion/v0.11.2...bullion/v0.11.3) (2026-07-16)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.6](https://github.com/jgnagy/bullion/compare/bullion/v0.11.5...bullion/v0.11.6) (2026-09-22)
+
+
+### Bug Fixes
+
+* return orderNotReady instead of badCSR for non-ready finalize ([2d5fc6f](https://github.com/jgnagy/bullion/commit/2d5fc6f15f98ba39253b294868674073d56e5f81))
+
 ## [0.11.5](https://github.com/jgnagy/bullion/compare/bullion/v0.11.4...bullion/v0.11.5) (2026-09-21)
 
 

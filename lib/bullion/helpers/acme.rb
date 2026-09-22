@@ -125,7 +125,6 @@ module Bullion
         # Make sure the CSR has a valid public key
         raise Bullion::Acme::Errors::BadCsr unless csr.verify(csr.public_key)
 
-        return false unless order.ready_status?
         raise Bullion::Acme::Errors::BadCsr if csr_cn && !csr_domains.include?(csr_cn)
         raise Bullion::Acme::Errors::BadCsr unless csr_domains.sort == order.domains.sort
 
@@ -191,6 +190,24 @@ module Bullion
         order_domains.reject do |domain|
           Bullion.config.ca.domains.none? { domain["value"].end_with?(it) }
         end
+      end
+
+      # Builds the ACMEv2 order resource representation
+      # @see https://tools.ietf.org/html/rfc8555#section-7.1.3
+      def order_data(order)
+        data = {
+          status: order.status,
+          expires: order.expires,
+          notBefore: order.not_before,
+          notAfter: order.not_after,
+          identifiers: order.identifiers,
+          authorizations: order.authorizations.map { uri("/authorizations/#{it.id}") },
+          finalize: uri("/orders/#{order.id}/finalize")
+        }
+
+        data[:certificate] = uri("/certificates/#{order.certificate.id}") if order.valid_status?
+
+        data
       end
     end
   end

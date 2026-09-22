@@ -432,5 +432,58 @@ RSpec.describe Bullion::Services::CA do
       expect(parsed_body["type"]).to \
         eq("urn:ietf:params:acme:error:badCSR")
     end
+
+    context "when finalizing an order that is not ready" do
+      def order_with_id(domain: "good.test.domain")
+        register_account
+        kid = last_response.headers["Location"]
+
+        submit_order(key: account_key, kid:, identifiers: [{ "type" => "dns",
+                                                             "value" => domain }])
+        expect(last_response).to be_created
+        finalize_url = JSON.parse(last_response.body)["finalize"]
+        order_id = finalize_url.match(%r{/orders/(\d+)/finalize})[1].to_i
+        [kid, order_id]
+      end
+
+      it "is idempotent when the order is already valid" do
+        kid, order_id = order_with_id
+        order, = verify_challenge(kid:, order_id:)
+        expect(order.status).to eq("ready")
+
+        cert_key = OpenSSL::PKey::RSA.new(2048)
+        csr = build_cert_csr("good.test.domain", cert_key)
+
+        finalize_order(kid:, order_id: order.id, csr:)
+        expect(last_response).to be_ok
+        first_body = JSON.parse(last_response.body)
+        expect(first_body["status"]).to eq("valid")
+        expect(first_body).to include("certificate")
+
+        finalize_order(kid:, order_id: order.id, csr:)
+
+        expect(last_response).to be_ok
+        expect(last_response.headers["Content-Type"]).to eq("application/json")
+        second_body = JSON.parse(last_response.body)
+        expect(second_body["status"]).to eq("valid")
+        expect(second_body["certificate"]).to eq(first_body["certificate"])
+      end
+
+      it "returns 403 orderNotReady when the order is pending" do
+        kid, order_id = order_with_id
+
+        cert_key = OpenSSL::PKey::RSA.new(2048)
+        csr = build_cert_csr("good.test.domain", cert_key)
+
+        finalize_order(kid:, order_id:, csr:)
+
+        expect(last_response.status).to eq(403)
+        expect(last_response.headers["Content-Type"]).to \
+          eq("application/problem+json")
+        parsed_body = JSON.parse(last_response.body)
+        expect(parsed_body["type"]).to \
+          eq("urn:ietf:params:acme:error:orderNotReady")
+      end
+    end
   end
 end

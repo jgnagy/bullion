@@ -214,15 +214,7 @@ module Bullion
         content_type "application/json"
         add_acme_headers @new_nonce, additional: { "Location" => uri("/orders/#{order.id}") }
 
-        halt 201, {
-          status: order.status,
-          expires: order.expires,
-          notBefore: order.not_before,
-          notAfter: order.not_after,
-          identifiers: order.identifiers,
-          authorizations: order.authorizations.map { uri("/authorizations/#{it.id}") },
-          finalize: uri("/orders/#{order.id}/finalize")
-        }.to_json
+        halt 201, order_data(order).to_json
       rescue Bullion::Acme::Error => e
         content_type "application/problem+json"
         halt 400, { type: e.acme_error, detail: e.message }.to_json
@@ -237,19 +229,7 @@ module Bullion
 
         order = Models::Order.find(params[:id])
 
-        data = {
-          status: order.status,
-          expires: order.expires,
-          notBefore: order.not_before,
-          notAfter: order.not_after,
-          identifiers: order.identifiers,
-          authorizations: order.authorizations.map { uri("/authorizations/#{it.id}") },
-          finalize: uri("/orders/#{order.id}/finalize")
-        }
-
-        data[:certificate] = uri("/certificates/#{order.certificate.id}") if order.valid_status?
-
-        data.to_json
+        order_data(order).to_json
       rescue Bullion::Acme::Error => e
         content_type "application/problem+json"
         halt 400, { type: e.acme_error, detail: e.message }.to_json
@@ -267,6 +247,17 @@ module Bullion
 
         order_csr = Models::OrderCsr.from_acme_request(order, @payload_data["csr"])
 
+        unless order.ready_status?
+          # Finalize is idempotent for orders that have already been finalized
+          halt 200, order_data(order).to_json if %w[processing valid].include?(order.status)
+
+          content_type "application/problem+json"
+          halt 403, {
+            type: Bullion::Acme::Errors::OrderNotReady.new.acme_error,
+            detail: "Order is not ready to be finalized"
+          }.to_json
+        end
+
         unless acme_csr_valid?(order_csr)
           content_type "application/problem+json"
           halt 400, {
@@ -281,19 +272,7 @@ module Bullion
         order.status = "valid"
         order.save
 
-        data = {
-          status: order.status,
-          expires: order.expires,
-          notBefore: order.not_before,
-          notAfter: order.not_after,
-          identifiers: order.identifiers,
-          authorizations: order.authorizations.map { uri("/authorizations/#{it.id}") },
-          finalize: uri("/orders/#{order.id}/finalize")
-        }
-
-        data[:certificate] = uri("/certificates/#{order.certificate.id}") if order.valid_status?
-
-        data.to_json
+        order_data(order).to_json
       rescue Bullion::Acme::Error => e
         content_type "application/problem+json"
         halt 422, { type: e.acme_error, detail: e.message }.to_json

@@ -111,6 +111,26 @@ RSpec.describe Bullion::Services::CA do
       acme_order.certificate
     end
 
+    it "allows finalizing an order more than once" do
+      cert_key = OpenSSL::PKey::RSA.new(2048)
+      domain = "retry.test.domain"
+      acme_order = @acme_client.new_order(identifiers: [domain])
+      authorization = acme_order.authorizations.first
+      challenge = authorization.http
+      challenge.request_validation
+      challenge.reload
+      csr = Acme::Client::CertificateRequest.new(
+        private_key: cert_key,
+        subject: { common_name: domain }
+      )
+      acme_order.finalize(csr:)
+      certificate_url = acme_order.certificate_url
+
+      expect { acme_order.finalize(csr:) }.not_to raise_error
+      expect(acme_order.status).to eq("valid")
+      expect(acme_order.certificate_url).to eq(certificate_url)
+    end
+
     it "provides valid signed certificates" do
       cert_key = OpenSSL::PKey::RSA.new(2048)
       domain = "blammo.test.domain"

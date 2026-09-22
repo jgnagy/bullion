@@ -64,6 +64,11 @@ module Bullion
         def acme_type = "malformed"
       end
 
+      # ACME exception for orders that aren't ready to be finalized
+      class OrderNotReady < Bullion::Acme::Error
+        def acme_type = "orderNotReady"
+      end
+
       # ACME exception for unsupported contacts in accounts
       class UnsupportedContact < Bullion::Acme::Error
         def acme_type = "unsupportedContact"

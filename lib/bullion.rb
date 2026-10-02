@@ -140,6 +140,19 @@ Bullion.configure do |config|
   config.nameservers = nameservers if nameservers
 end
 
+# Itsi processes each request inside its own Fiber, but all fibers on a thread
+# share an ActiveSupport execution context by default. ActiveRecord leases a
+# database connection per execution context, so without fiber isolation every
+# concurrent request fiber on a thread shares (and races on) the same
+# connection. Trilogy detects this and raises Trilogy::SynchronizationError.
+# Mirror Itsi's own scheduler_mode hook (which itsi-server 0.2.27 never loads)
+# and the Rails 8.1+ default by opting into fiber isolation, honoring Itsi's
+# opt-out.
+# @see https://github.com/jgnagy/bullion/issues/116
+unless ENV["ITSI_DISABLE_AS_AUTO_FIBER_ISOLATION_LEVEL"]
+  ActiveSupport::IsolatedExecutionState.isolation_level = :fiber
+end
+
 # Internal requirements
 require "bullion/version"
 require "bullion/acme/error"

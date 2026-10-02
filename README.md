@@ -160,7 +160,7 @@ Whether run locally or via Docker, the following environment variables configure
 | `CA_CERT_PATH` | `$CA_DIR/tls.crt` | Public cert for Bullion. If Bullion is an intermediate CA, you'll want to include the root CA's public cert in this file as well the signed cert for Bullion. |
 | `CA_DOMAINS` | `example.com` | A comma-delimited list of domains for which Bullion will sign certificate requests. Subdomains are automatically allowed. Certificates containing other domains will be rejected. |
 | `CERT_VALIDITY_DURATION` | `7776000` | How long should issued certs be valid (in seconds)? Default is 90 days. |
-| `DATABASE_URL` | _None_ | **(Required)** A shorthand for telling Bullion how to connect to a database. Acceptable URLs will either begin with `sqlite3:` or [`trilogy://`](https://github.com/trilogy-libraries/trilogy/tree/main/contrib/ruby). |
+| `DATABASE_URL` | _None_ | **(Required)** A shorthand for telling Bullion how to connect to a database. Acceptable URLs will either begin with `sqlite3:` or [`trilogy://`](https://github.com/trilogy-libraries/trilogy/tree/main/contrib/ruby). ActiveRecord connection options may be passed as query parameters, e.g. `trilogy://user:pass@host:3306/bullion?max_connections=25&checkout_timeout=5`. |
 | `DNS01_NAMESERVERS` | _None_ | A comma-delimited list of nameservers to use for resolving [DNS-01](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) challenges. Usually you'll want this to be set to your _internal_ nameservers so internal names resolve correctly. When not set, it'll use the host's DNS. |
 | `LOG_LEVEL` | `warn` | Log level for Bullion. Supported levels (starting with the noisiest) are debug, info, warn, error, and fatal. |
 | `BULLION_PORT` | `9292` | TCP port Bullion will listen on. |
@@ -168,6 +168,8 @@ Whether run locally or via Docker, the following environment variables configure
 | `WORKERS` | `1` | Number of [Itsi workers](https://itsi.fyi/options/workers/) to spawn. |
 | `WORKER_MEMORY_LIMIT` | `1024**3` | [Itsi worker memory limit](https://itsi.fyi/options/worker_memory_limit/) for each worker process (in bytes). Default is 1GiB. |
 | `RACK_ENV` | `production`* | When run via Docker, the default is `production`, when run via `rake local_demo` it is `development`. Used to tell Bullion if it is run in development mode or for testing. |
+
+Because Bullion serves requests through Itsi's [fiber scheduler](https://itsi.fyi/options/fiber_scheduler/), each in-flight request leases its own database connection. ActiveRecord's connection pool defaults to 5 connections, so raise `max_connections` on `DATABASE_URL` if you expect more concurrent requests. `checkout_timeout` (default 5 seconds) controls how long a request waits for a connection before failing.
 
 ### Integrating
 

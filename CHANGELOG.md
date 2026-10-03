@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.6](https://github.com/jgnagy/bullion/compare/bullion/v0.11.5...bullion/v0.11.6) (2026-10-02)
+
+
+### Bug Fixes
+
+* give each request fiber its own database connection ([c47a277](https://github.com/jgnagy/bullion/commit/c47a2779ab6b115bbb0c9af75559c17010353962))
+* give each request fiber its own database connection ([cca3b31](https://github.com/jgnagy/bullion/commit/cca3b313a6adf04ef9680698ca64f53027b58d3b))
+* return orderNotReady instead of badCSR for non-ready finalize ([2d5fc6f](https://github.com/jgnagy/bullion/commit/2d5fc6f15f98ba39253b294868674073d56e5f81))
+
 ## [0.11.5](https://github.com/jgnagy/bullion/compare/bullion/v0.11.4...bullion/v0.11.5) (2026-09-21)
 
 

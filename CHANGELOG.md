@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.12.0](https://github.com/jgnagy/bullion/compare/bullion/v0.11.6...bullion/v0.12.0) (2026-10-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* migrate to Ruby 4.0.9
+
+### Features
+
+* migrate to Ruby 4.0.9 ([6563da6](https://github.com/jgnagy/bullion/commit/6563da60185e30d10f70803ea27b7d2c0c61495f))
+
 ## [0.11.6](https://github.com/jgnagy/bullion/compare/bullion/v0.11.5...bullion/v0.11.6) (2026-10-02)
 
 

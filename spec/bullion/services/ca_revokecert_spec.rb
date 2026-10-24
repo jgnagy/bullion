@@ -47,7 +47,7 @@ RSpec.describe Bullion::Services::CA do
       last_response.headers["Location"]
     end
 
-    # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
+    # rubocop:disable-next Metrics/AbcSize,Metrics/MethodLength
     def sign_and_download_cert(kid, domain)
       order = Bullion::Models::Order.last
 
@@ -82,7 +82,6 @@ RSpec.describe Bullion::Services::CA do
       cert = OpenSSL::X509::Certificate.new("#{cert_pem}-----END CERTIFICATE-----\n")
       [cert, cert_id]
     end
-    # rubocop:enable Metrics/AbcSize,Metrics/MethodLength
 
     it "returns 200 OK for OPTIONS requests for /revokecert" do
       options "/revokecert"

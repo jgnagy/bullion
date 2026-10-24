@@ -3,7 +3,7 @@
 module Bullion
   module Helpers
     # SSL-related helper methods
-    # rubocop:disable Metrics/ModuleLength
+    # rubocop:disable-next Metrics/ModuleLength
     module Ssl
       # Converts the incoming key data to an OpenSSL public key usable to verify JWT signatures
       def openssl_compat(key_data)
@@ -222,7 +222,7 @@ module Bullion
       end
 
       # Signs an ACME CSR
-      # rubocop:disable Metrics/AbcSize
+      # rubocop:disable-next Metrics/AbcSize
       def sign_csr(csr, username)
         cert = Models::Certificate.from_csr(csr)
         # Create a OpenSSL cert using select info from the CSR
@@ -253,8 +253,6 @@ module Bullion
 
         [csr_cert, cert.id]
       end
-      # rubocop:enable Metrics/AbcSize
     end
-    # rubocop:enable Metrics/ModuleLength
   end
 end

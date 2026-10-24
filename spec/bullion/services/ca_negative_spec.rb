@@ -63,7 +63,7 @@ RSpec.describe Bullion::Services::CA do
     post "/orders", body, { "CONTENT_TYPE" => "application/jose+json" }
   end
 
-  # rubocop:disable Metrics/AbcSize,Metrics/MethodLength
+  # rubocop:disable-next Metrics/AbcSize,Metrics/MethodLength
   def verify_challenge(kid:, order_id:, nonce: nil)
     get "/nonces"
     nonce ||= last_response.headers["Replay-Nonce"]
@@ -95,7 +95,6 @@ RSpec.describe Bullion::Services::CA do
     order.reload
     [order, challenge]
   end
-  # rubocop:enable Metrics/AbcSize,Metrics/MethodLength
 
   def build_cert_csr(domain, key)
     cert_req = OpenSSL::X509::Request.new
@@ -115,7 +114,7 @@ RSpec.describe Bullion::Services::CA do
     cert_req
   end
 
-  # rubocop:disable Metrics/MethodLength
+  # rubocop:disable-next Metrics/MethodLength
   def finalize_order(kid:, order_id:, csr:)
     encoded_csr = Base64.urlsafe_encode64(csr.to_der)
 
@@ -143,7 +142,6 @@ RSpec.describe Bullion::Services::CA do
     post "/orders/#{order_id}/finalize", body,
          { "CONTENT_TYPE" => "application/jose+json" }
   end
-  # rubocop:enable Metrics/MethodLength
 
   context "with negative test cases" do
     it "rejects orders with invalid domains" do

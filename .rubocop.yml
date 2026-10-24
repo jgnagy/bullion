@@ -6,7 +6,7 @@ Layout/LineLength:
   Max: 100
 
 AllCops:
-  TargetRubyVersion: 3.4
+  TargetRubyVersion: 4.0
   Exclude:
   - 'db/schema.rb'
   - 'vendor/**/*'

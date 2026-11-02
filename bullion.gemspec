@@ -53,7 +53,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "sinatra-activerecord", "~> 2.0"
   spec.add_dependency "sinatra-contrib",      ">= 3.1", "< 5.0"
   spec.add_dependency "sqlite3",              "~> 2.7"
-  spec.add_dependency "trilogy",              "~> 2.9"
+  spec.add_dependency "trilogy",              "~> 2.13.2"
 
   spec.add_development_dependency "acme-client",         "~> 2.0"
   spec.add_development_dependency "bundler",             ">= 2.4", "< 5.0"

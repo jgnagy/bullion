@@ -13,7 +13,12 @@ module Bullion
       has_one :order
 
       def init_values
-        self.serial ||= SecureRandom.hex(4).to_i(16)
+        # CABF Baseline Requirements require at least 64 bits of CSPRNG output
+        # in certificate serial numbers. Eight random bytes provide that, but
+        # the serial column is a signed BIGINT, so clear the top bit to keep
+        # the value positive and storable. Existing certificates keep their
+        # serials; this only affects new issuances.
+        self.serial ||= SecureRandom.hex(8).to_i(16) & 0x7FFF_FFFF_FFFF_FFFF
       end
 
       def fingerprint

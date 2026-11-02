@@ -44,8 +44,10 @@ Gem::Specification.new do |spec|
   spec.add_dependency "dry-configurable",     "~> 1.1"
   spec.add_dependency "httparty",             "~> 0.21"
   spec.add_dependency "itsi",                 "~> 0.2"
-  spec.add_dependency "json",                 "~> 2.6"
-  spec.add_dependency "jwt",                  ">= 2.7", "< 4.0"
+  # Security floors: jwt 3.2.0 fixes CVE-2026-45363 (empty-key HMAC bypass);
+  # json 2.21.2 fixes CVE-2026-71847 and supersedes the earlier parser fixes.
+  spec.add_dependency "json",                 ">= 2.21.2", "< 3.0"
+  spec.add_dependency "jwt",                  ">= 3.2.0", "< 4.0"
   spec.add_dependency "jwt-eddsa",            "~> 0.9"
   spec.add_dependency "openssl",              ">= 3.0", "< 5.0"
   spec.add_dependency "prometheus-client",    "~> 4.2"

@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.12.1](https://github.com/jgnagy/bullion/compare/bullion/v0.12.0...bullion/v0.12.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* accept the full RFC 8555 revocation set, add problem docs (ghostex-d76.1) ([e68c9a1](https://github.com/jgnagy/bullion/commit/e68c9a12f17e0655b2a8d9587fd78550df9cc7ab))
+* bound ACME nonce minting and expire stale nonces (ghostex-d76.3) ([3938285](https://github.com/jgnagy/bullion/commit/3938285d6dc9b6c91cbd6d9aff5a9729a3cf0760))
+* bump trilogy to 2.13.2 for GHSA-744p-w4gc-m3gh (ghostex-d76.7) ([4b3c657](https://github.com/jgnagy/bullion/commit/4b3c657c9eda1a4348f6f1d6aeeb4327269c80ba))
+* emit full-width EC JWK coordinates; 400 on malformed EC points (ghostex-d76.4) ([2e98fed](https://github.com/jgnagy/bullion/commit/2e98fed5a227a77548426d797a444c207f0ae58c))
+* emit full-width EC JWK coordinates; return 400 malformed on invalid EC points (ghostex-d76.4) ([b23dfd1](https://github.com/jgnagy/bullion/commit/b23dfd1a7219ed6fc7137369ed4370ad57d42223))
+* enforce account ownership across ACME by-ID resources (ghostex-d76.1) ([0dfd9b2](https://github.com/jgnagy/bullion/commit/0dfd9b2f74567a051b55c767f6681c4b441eba57))
+* enforce authorization and order expiration (ghostex-d76.6) ([c909fc9](https://github.com/jgnagy/bullion/commit/c909fc96d5f97856bd1e2117dcd7bd1b993eee9a))
+* fail closed when CA_SECRET is unset outside development/test (ghostex-d76.2) ([f203327](https://github.com/jgnagy/bullion/commit/f2033274f83f7e2de43c20accea0259694cf39f1))
+* mint 64-bit certificate serials (ghostex-d76.3) ([db594c6](https://github.com/jgnagy/bullion/commit/db594c6075b42e6521f827094a9c28ad4015c44d))
+* sanitize unhandled errors for ACME clients (ghostex-d76.3) ([c382457](https://github.com/jgnagy/bullion/commit/c3824577186dcbc7f9e4eb0572571659df288ecd))
+
 ## [0.12.0](https://github.com/jgnagy/bullion/compare/bullion/v0.11.6...bullion/v0.12.0) (2026-10-24)
 
 

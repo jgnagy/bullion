@@ -29,6 +29,12 @@ module Bullion
         self.token ||= SecureRandom.alphanumeric(48)
       end
 
+      # Whether this challenge's lifetime has elapsed. An elapsed challenge
+      # must not be promoted to valid or advance its authorization.
+      def expired?
+        expires <= Time.now
+      end
+
       def thumbprint
         cipher = OpenSSL::Digest.new("SHA256")
         digest = cipher.digest(lexicographically_ordered_public_key.to_json)

@@ -187,6 +187,24 @@ RSpec.describe Bullion::Services::CA do
       expect(Bullion::Models::Certificate.find_by(serial: cert.serial.to_i)).to be_revoked
     end
 
+    it "refuses an account whose covering authorization has expired" do
+      issuer_kid = register_account(key: issuer_key, email: issuer_email)
+      rescuer_kid = register_account(key: rescuer_key, email: rescuer_email)
+
+      order = create_order(kid: issuer_kid, key: issuer_key, domains: [domain])
+      validate_order(kid: issuer_kid, key: issuer_key, order:)
+      cert, = issue_certificate(kid: issuer_kid, key: issuer_key, order:, domains: [domain])
+
+      # The rescuer's proof of control is past its lifetime
+      rescuer_order = create_order(kid: rescuer_kid, key: rescuer_key, domains: [domain])
+      validate_order(kid: rescuer_kid, key: rescuer_key, order: rescuer_order)
+      rescuer_order.authorizations.first.update!(expires: Time.now - 60)
+
+      revoke_with_account(cert, key: rescuer_key, kid: rescuer_kid)
+
+      expect_refused_without_revocation(cert)
+    end
+
     it "accepts revocation signed with the certificate's private key" do
       issuer_kid = register_account(key: issuer_key, email: issuer_email)
       order = create_order(kid: issuer_kid, key: issuer_key, domains: [domain])

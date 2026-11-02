@@ -28,6 +28,19 @@ module Bullion
         self.not_after ||= Time.now + (60 * 60 * 24 * 90) # 90 days
       end
 
+      # Whether this order's lifetime has elapsed.
+      def expired?
+        expires <= Time.now
+      end
+
+      # Whether the order may be finalized: it must be ready, within its own
+      # lifetime, and every authorization must still prove control. An order
+      # already marked ready can outlive its authorizations, so readiness is
+      # re-checked here rather than trusted from the persisted status.
+      def ready_for_issuance?
+        ready_status? && !expired? && authorizations.all?(&:valid_for_issuance?)
+      end
+
       def prep_authorizations!
         identifiers.each do |identifier|
           authorization = Authorization.new

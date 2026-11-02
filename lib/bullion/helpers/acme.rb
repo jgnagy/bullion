@@ -146,9 +146,10 @@ module Bullion
                          .find_by(id: params[:id], orders: { account_id: @user.id })
       end
 
-      # The identifiers whose authorizations this order has proven
+      # The identifiers whose authorizations this order has proven and whose
+      # proofs have not yet expired.
       def validated_domains(order)
-        order.authorizations.select(&:valid_status?).map { it.identifier["value"] }.sort
+        order.authorizations.select(&:valid_for_issuance?).map { it.identifier["value"] }.sort
       end
 
       # Marks a just-validated challenge's authorization valid, and marks the
@@ -157,12 +158,29 @@ module Bullion
       # multi-identifier order must not become finalizable early.
       def advance_validation!(challenge)
         authorization = challenge.authorization
+
+        # An elapsed proof must never be promoted or counted. The stored
+        # status may remain "valid" for client rendering, but issuance and
+        # order readiness rely on #valid_for_issuance?.
+        return if challenge.expired? || authorization.expired?
+
         authorization.update!(status: "valid") unless authorization.valid_status?
 
         order = authorization.order
         return if order.ready_status?
 
-        order.update!(status: "ready") if order.authorizations.all?(&:valid_status?)
+        order.update!(status: "ready") if order.authorizations.all?(&:valid_for_issuance?)
+      end
+
+      # The refusal detail for a finalize attempt that cannot proceed,
+      # distinguishing an elapsed order or authorization from one that is
+      # merely not ready. RFC 8555 has no dedicated expiry error, so all
+      # three refusals use orderNotReady.
+      def finalize_refusal_detail(order)
+        return "Order has expired" if order.expired?
+        return "An authorization has expired" if order.authorizations.any?(&:expired?)
+
+        "Order is not ready to be finalized"
       end
 
       # Halts with an RFC 7807 problem document for an ACME error
@@ -200,16 +218,17 @@ module Bullion
 
       # Whether the account may revoke the certificate record under RFC
       # 8555 section 7.6: either it is the account the certificate was
-      # issued to, or it holds valid (non-deactivated) authorizations
-      # covering every identifier in the certificate. The jwk path needs
-      # no account check: its signature already proved possession of the
-      # certificate's private key.
+      # issued to, or it holds valid, unexpired authorizations covering
+      # every identifier in the certificate. The jwk path needs no account
+      # check: its signature already proved possession of the certificate's
+      # private key.
       def revocation_authorized?(account, record)
         return true if record.order&.account_id == account.id
 
         covered = Models::Authorization.joins(:order)
                                        .where(orders: { account_id: account.id },
                                               authorizations: { status: "valid" })
+                                       .select(&:valid_for_issuance?)
                                        .map { it.identifier["value"] }
 
         certificate_domains(record).all? { |domain| covered.include?(domain) }

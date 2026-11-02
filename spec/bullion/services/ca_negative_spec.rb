@@ -676,5 +676,93 @@ RSpec.describe Bullion::Services::CA do
           eq("urn:ietf:params:acme:error:orderNotReady")
       end
     end
+
+    context "with expired proofs" do
+      let(:domain) { "good.test.domain" }
+
+      def ready_order(kid:)
+        submit_order(key: account_key, kid:,
+                     identifiers: [{ "type" => "dns", "value" => domain }])
+        expect(last_response).to be_created
+        finalize_url = JSON.parse(last_response.body)["finalize"]
+        order_id = finalize_url.match(%r{/orders/(\d+)/finalize})[1].to_i
+
+        order, = verify_challenge(kid:, order_id:)
+        [order, order_id]
+      end
+
+      it "refuses to finalize when a validated authorization has expired" do
+        register_account
+        kid = last_response.headers["Location"]
+        order, = ready_order(kid:)
+        expect(order.status).to eq("ready")
+
+        order.authorizations.first.update!(expires: Time.now - 60)
+
+        csr = build_cert_csr(domain, OpenSSL::PKey::RSA.new(2048))
+        cert_count = Bullion::Models::Certificate.count
+        finalize_order(kid:, order_id: order.id, csr:)
+
+        expect(last_response.status).to eq(403)
+        expect(last_response.headers["Content-Type"]).to \
+          eq("application/problem+json")
+        parsed_body = JSON.parse(last_response.body)
+        expect(parsed_body["type"]).to \
+          eq("urn:ietf:params:acme:error:orderNotReady")
+        expect(parsed_body["detail"]).to eq("An authorization has expired")
+        expect(order.reload.certificate_id).to be_nil
+        expect(Bullion::Models::Certificate.count).to eq(cert_count)
+      end
+
+      it "refuses to finalize when the order itself has expired" do
+        register_account
+        kid = last_response.headers["Location"]
+        order, = ready_order(kid:)
+        order.update!(expires: Time.now - 60)
+
+        csr = build_cert_csr(domain, OpenSSL::PKey::RSA.new(2048))
+        finalize_order(kid:, order_id: order.id, csr:)
+
+        expect(last_response.status).to eq(403)
+        parsed_body = JSON.parse(last_response.body)
+        expect(parsed_body["type"]).to \
+          eq("urn:ietf:params:acme:error:orderNotReady")
+        expect(parsed_body["detail"]).to eq("Order has expired")
+        expect(order.reload.certificate_id).to be_nil
+      end
+
+      it "does not mark an order ready when an earlier authorization expired" do
+        register_account
+        kid = last_response.headers["Location"]
+        submit_order(key: account_key, kid:, identifiers: [
+                       { "type" => "dns", "value" => "first.test.domain" },
+                       { "type" => "dns", "value" => "second.test.domain" }
+                     ])
+        expect(last_response).to be_created
+        finalize_url = JSON.parse(last_response.body)["finalize"]
+        order_id = finalize_url.match(%r{/orders/(\d+)/finalize})[1].to_i
+
+        order, = verify_challenge(kid:, order_id:)
+        expect(order.status).to eq("pending")
+        order.authorizations.first.update!(expires: Time.now - 60)
+
+        verify_challenge(kid:, order_id:, authz_index: 1)
+
+        expect(order.reload.status).to eq("pending")
+      end
+
+      it "still finalizes when every authorization is fresh" do
+        register_account
+        kid = last_response.headers["Location"]
+        order, = ready_order(kid:)
+        order.authorizations.first.update!(expires: Time.now + 3600)
+
+        csr = build_cert_csr(domain, OpenSSL::PKey::RSA.new(2048))
+        finalize_order(kid:, order_id: order.id, csr:)
+
+        expect(last_response).to be_ok
+        expect(JSON.parse(last_response.body)["status"]).to eq("valid")
+      end
+    end
   end
 end

@@ -252,14 +252,14 @@ module Bullion
 
         order_csr = Models::OrderCsr.from_acme_request(order, @payload_data["csr"])
 
-        unless order.ready_status?
+        unless order.ready_for_issuance?
           # Finalize is idempotent for orders that have already been finalized
           halt 200, order_data(order).to_json if %w[processing valid].include?(order.status)
 
           content_type "application/problem+json"
           halt 403, {
             type: Bullion::Acme::Errors::OrderNotReady.new.acme_error,
-            detail: "Order is not ready to be finalized"
+            detail: finalize_refusal_detail(order)
           }.to_json
         end
 

@@ -44,6 +44,20 @@ RSpec.describe Bullion::Models::Challenge do
     expect(subject.expires).to be > Time.now
   end
 
+  describe "#expired?" do
+    it "is false while the challenge's lifetime remains" do
+      subject.update!(expires: Time.now + 60)
+
+      expect(subject).not_to be_expired
+    end
+
+    it "is true once the challenge's lifetime has elapsed" do
+      subject.update!(expires: Time.now - 60)
+
+      expect(subject).to be_expired
+    end
+  end
+
   it "provides a valid challenge client" do
     authorization.challenges.each do |challenge|
       expect(challenge.client).to be_a(Bullion::ChallengeClient)

@@ -26,6 +26,22 @@ module Bullion
         self.expires ||= Time.now + (60 * 60)
       end
 
+      # Whether this authorization's lifetime has elapsed. The stored status
+      # is deliberately left untouched: clients still see the last persisted
+      # status, while issuance and revocation coverage consult
+      # #valid_for_issuance?.
+      def expired?
+        expires <= Time.now
+      end
+
+      # Whether this authorization still proves control of its identifier.
+      # RFC 8555 carries an "expires" timestamp precisely so a proof stops
+      # being honored after its lifetime, even though its stored status has
+      # not been rewritten.
+      def valid_for_issuance?
+        valid_status? && !expired?
+      end
+
       def prep_challenges!
         %w[http-01 dns-01].each do |type|
           chall = Challenge.new

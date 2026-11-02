@@ -161,7 +161,7 @@ module Bullion
       post "/accounts/:id" do
         parse_acme_jwt
 
-        unless params[:id] == @user.id
+        unless params[:id].to_i == @user.id
           content_type "application/json"
           add_acme_headers @new_nonce
 
@@ -180,7 +180,7 @@ module Bullion
       post "/accounts/:id/orders" do
         parse_acme_jwt
 
-        unless params[:id] == @user.id
+        unless params[:id].to_i == @user.id
           content_type "application/json"
           add_acme_headers @new_nonce
 
@@ -192,7 +192,7 @@ module Bullion
 
         {
           orders: @user.orders.map { uri("/orders/#{it.id}") }
-        }
+        }.to_json
       end
 
       # Endpoint for creating new orders
@@ -224,10 +224,11 @@ module Bullion
       post "/orders/:id" do
         parse_acme_jwt
 
+        order = owned_order
+        halt 404 unless order
+
         content_type "application/json"
         add_acme_headers @new_nonce
-
-        order = Models::Order.find(params[:id])
 
         order_data(order).to_json
       rescue Bullion::Acme::Error => e
@@ -240,7 +241,11 @@ module Bullion
       post "/orders/:id/finalize" do
         parse_acme_jwt
 
-        order = Models::Order.find(params[:id])
+        # Ownership is verified before the CSR is parsed or anything is
+        # signed: a foreign CSR must never be signed against another
+        # account's validated order.
+        order = owned_order
+        halt 404 unless order
 
         content_type "application/json"
         add_acme_headers @new_nonce, additional: { "Location" => uri("/orders/#{order.id}") }
@@ -283,11 +288,11 @@ module Bullion
       post "/authorizations/:id" do
         parse_acme_jwt
 
+        authorization = owned_authorization
+        halt 404 unless authorization
+
         content_type "application/json"
         add_acme_headers @new_nonce
-
-        authorization = Models::Authorization.find(params[:id])
-        halt 404 unless authorization
 
         data = {
           status: authorization.status,
@@ -316,10 +321,13 @@ module Bullion
       post "/challenges/:id" do
         parse_acme_jwt
 
+        # Ownership is verified before triggering validation, so only the
+        # account that created an order can cause its challenges to run.
+        challenge = owned_challenge
+        halt 404 unless challenge
+
         content_type "application/json"
         add_acme_headers @new_nonce
-
-        challenge = Models::Challenge.find(params[:id])
 
         # Oddly enough, cert-manager uses a GET request for retrieving Challenge info
         challenge.client.attempt unless @json_body && @json_body[:payload] == ""
@@ -336,10 +344,7 @@ module Bullion
 
         if challenge.valid_status?
           data[:validated] = challenge.validated
-          authorization = challenge.authorization
-          authorization.update!(status: "valid") unless authorization.valid_status?
-          order = authorization.order
-          order.update!(status: "ready") unless order.ready_status?
+          advance_validation!(challenge)
         end
 
         add_link_relation("up", uri("/authorizations/#{challenge.authorization.id}"))
@@ -356,7 +361,9 @@ module Bullion
         parse_acme_jwt
         add_acme_headers @new_nonce
 
-        order = Models::Order.where(certificate_id: params[:id]).first
+        # The order is scoped to the authenticated account: a certificate
+        # from another account behaves exactly like a missing one.
+        order = Models::Order.find_by(certificate_id: params[:id], account_id: @user.id)
         if order&.valid_status?
           content_type "application/pem-certificate-chain"
 
@@ -388,6 +395,12 @@ module Bullion
             detail: "Certificate not found"
           }.to_json
         end
+
+        # Only the account that was issued the certificate may revoke it.
+        # This is checked before the revoked? state is revealed, and refused
+        # in the same not-found style as every other resource, so a foreign
+        # account learns nothing about someone else's certificate.
+        halt 404 unless record.order&.account_id == @user.id
 
         if record.revoked?
           content_type "application/problem+json"

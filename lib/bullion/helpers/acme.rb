@@ -114,6 +114,54 @@ module Bullion
         true
       end
 
+      # Ownership enforcement
+      #
+      # ACME resources are private to the account that created them. Requests
+      # are authenticated via the JWS "kid" (see #parse_acme_jwt), and every
+      # by-ID lookup below is scoped to that account: a resource that is
+      # missing and a resource owned by someone else are both answered with a
+      # 404, so an attacker cannot even learn that another account's order,
+      # authorization, challenge, or certificate exists.
+
+      # Returns the Order named by params[:id] when the authenticated account
+      # owns it; nil when it is missing or belongs to a different account.
+      def owned_order
+        Models::Order.find_by(id: params[:id], account_id: @user.id)
+      end
+
+      # Returns the Authorization named by params[:id] when the authenticated
+      # account owns its order; nil when it is missing or foreign-owned.
+      def owned_authorization
+        Models::Authorization.joins(:order)
+                             .find_by(id: params[:id], orders: { account_id: @user.id })
+      end
+
+      # Returns the Challenge named by params[:id] when the authenticated
+      # account owns the challenge's order; nil when missing or foreign-owned.
+      def owned_challenge
+        Models::Challenge.joins(authorization: :order)
+                         .find_by(id: params[:id], orders: { account_id: @user.id })
+      end
+
+      # The identifiers whose authorizations this order has proven
+      def validated_domains(order)
+        order.authorizations.select(&:valid_status?).map { it.identifier["value"] }.sort
+      end
+
+      # Marks a just-validated challenge's authorization valid, and marks the
+      # order ready once every one of its authorizations is valid: a single
+      # valid challenge proves control of only one identifier, so a
+      # multi-identifier order must not become finalizable early.
+      def advance_validation!(challenge)
+        authorization = challenge.authorization
+        authorization.update!(status: "valid") unless authorization.valid_status?
+
+        order = authorization.order
+        return if order.ready_status?
+
+        order.update!(status: "ready") if order.authorizations.all?(&:valid_status?)
+      end
+
       def acme_csr_valid?(order_csr)
         csr = order_csr.csr
         order = order_csr.order
@@ -125,8 +173,13 @@ module Bullion
         # Make sure the CSR has a valid public key
         raise Bullion::Acme::Errors::BadCsr unless csr.verify(csr.public_key)
 
-        raise Bullion::Acme::Errors::BadCsr if csr_cn && !csr_domains.include?(csr_cn)
-        raise Bullion::Acme::Errors::BadCsr unless csr_domains.sort == order.domains.sort
+        # The CA may only sign identifiers the order has proven control of:
+        # the CSR's names must match the validated identifier set exactly, so
+        # no extra or substituted name can make it into a certificate.
+        validated = validated_domains(order)
+
+        raise Bullion::Acme::Errors::BadCsr if csr_cn && !validated.include?(csr_cn)
+        raise Bullion::Acme::Errors::BadCsr unless csr_domains.sort == validated
 
         true
       end
@@ -188,7 +241,11 @@ module Bullion
 
       def extract_valid_order_domains(order_domains)
         order_domains.reject do |domain|
-          Bullion.config.ca.domains.none? { domain["value"].end_with?(it) }
+          # Only allow a configured domain itself or a proper subdomain of it;
+          # the dot boundary stops "nottest.domain" from matching "test.domain"
+          Bullion.config.ca.domains.none? do |configured|
+            domain["value"] == configured || domain["value"].end_with?(".#{configured}")
+          end
         end
       end
 

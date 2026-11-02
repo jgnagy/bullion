@@ -64,12 +64,12 @@ RSpec.describe Bullion::Services::CA do
   end
 
   # rubocop:disable-next Metrics/AbcSize,Metrics/MethodLength
-  def verify_challenge(kid:, order_id:, nonce: nil)
+  def verify_challenge(kid:, order_id:, authz_index: 0, nonce: nil)
     get "/nonces"
     nonce ||= last_response.headers["Replay-Nonce"]
 
     order = Bullion::Models::Order.find(order_id)
-    authz = order.authorizations.first
+    authz = order.authorizations[authz_index]
     challenge = authz.challenges.where(acme_type: "http-01").first
 
     jwk = {
@@ -111,6 +111,25 @@ RSpec.describe Bullion::Services::CA do
 
     digest = key.is_a?(OpenSSL::PKey::EC) ? OpenSSL::Digest.new("SHA256") : nil
     cert_req.sign(key, digest)
+    cert_req
+  end
+
+  # Builds a CSR whose CN is the first domain and whose SANs cover them all
+  def build_multi_domain_csr(domains, key)
+    cert_req = OpenSSL::X509::Request.new
+    cert_req.version = 0
+    cert_req.subject = OpenSSL::X509::Name.new(
+      [["CN", domains.first, OpenSSL::ASN1::UTF8STRING]]
+    )
+    cert_req.public_key = key
+
+    factory = OpenSSL::X509::ExtensionFactory.new
+    sans = domains.map { "DNS:#{it}" }.join(",")
+    exts = [factory.create_extension("subjectAltName", sans)]
+    attr_set = OpenSSL::ASN1::Set([OpenSSL::ASN1::Sequence(exts)])
+    cert_req.add_attribute(OpenSSL::X509::Attribute.new("extReq", attr_set))
+
+    cert_req.sign(key, OpenSSL::Digest.new("SHA256"))
     cert_req
   end
 
@@ -222,6 +241,74 @@ RSpec.describe Bullion::Services::CA do
       }.to_json
 
       post "/orders", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.headers["Content-Type"]).to \
+        eq("application/problem+json")
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to \
+        eq("urn:ietf:params:acme:error:invalidOrder")
+    end
+
+    it "allows orders for an exact configured domain" do
+      register_account
+      kid = last_response.headers["Location"]
+
+      submit_order(key: account_key, kid:,
+                   identifiers: [{ "type" => "dns", "value" => "test.domain" }])
+
+      expect(last_response).to be_created
+    end
+
+    it "allows orders for subdomains of a configured domain" do
+      register_account
+      kid = last_response.headers["Location"]
+
+      submit_order(key: account_key, kid:,
+                   identifiers: [{ "type" => "dns", "value" => "foo.test.domain" }])
+
+      expect(last_response).to be_created
+    end
+
+    it "rejects orders for domains that merely end with a configured domain" do
+      register_account
+      kid = last_response.headers["Location"]
+
+      submit_order(key: account_key, kid:,
+                   identifiers: [{ "type" => "dns", "value" => "nottest.domain" }])
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.headers["Content-Type"]).to \
+        eq("application/problem+json")
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to \
+        eq("urn:ietf:params:acme:error:invalidOrder")
+    end
+
+    it "rejects orders for proper suffixes of a configured domain" do
+      register_account
+      kid = last_response.headers["Location"]
+
+      submit_order(key: account_key, kid:,
+                   identifiers: [{ "type" => "dns", "value" => "est.domain" }])
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.headers["Content-Type"]).to \
+        eq("application/problem+json")
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to \
+        eq("urn:ietf:params:acme:error:invalidOrder")
+    end
+
+    it "rejects orders for domains unrelated to any configured domain" do
+      register_account
+      kid = last_response.headers["Location"]
+
+      submit_order(key: account_key, kid:,
+                   identifiers: [{ "type" => "dns", "value" => "other.domain" }])
 
       expect(last_response.status).to eq(400)
       expect(last_response.headers["Content-Type"]).to \
@@ -344,18 +431,14 @@ RSpec.describe Bullion::Services::CA do
         signature: acme_sign(account_key, signature_data)
       }.to_json
 
-      # The CA service does not rescue RecordNotFound for challenges.
-      # Depending on the Sinatra/Rack environment, this either raises
-      # RecordNotFound (test mode) or returns a 500 error response.
-      # This documents the current behavior — a bug worth fixing separately.
-      begin
-        post "/challenges/999999", body,
-             { "CONTENT_TYPE" => "application/jose+json" }
-      rescue ActiveRecord::RecordNotFound
-        # Expected in test mode where exceptions propagate
-      else
-        expect(last_response.status).to eq(500)
-      end
+      # Challenge lookups are scoped to the authenticated account, so a
+      # missing challenge answers with a 404 — exactly like a challenge
+      # that belongs to a different account (no existence leak).
+      post "/challenges/999999", body,
+           { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(404)
+      expect(last_response.body).to be_empty
     end
 
     it "rejects orders with notAfter beyond the maximum validity duration" do
@@ -429,6 +512,110 @@ RSpec.describe Bullion::Services::CA do
       parsed_body = JSON.parse(last_response.body)
       expect(parsed_body["type"]).to \
         eq("urn:ietf:params:acme:error:badCSR")
+    end
+
+    it "rejects finalization with a CSR carrying an extra identifier" do
+      register_account
+      kid = last_response.headers["Location"]
+
+      submit_order(key: account_key, kid:, identifiers: [{ "type" => "dns",
+                                                           "value" => "good.test.domain" }])
+      expect(last_response).to be_created
+      finalize_url = JSON.parse(last_response.body)["finalize"]
+      order_id = finalize_url.match(%r{/orders/(\d+)/finalize})[1].to_i
+
+      order, = verify_challenge(kid:, order_id:)
+      expect(order.status).to eq("ready")
+
+      # The CSR asks for a second name the order never validated
+      cert_key = OpenSSL::PKey::RSA.new(2048)
+      csr = build_multi_domain_csr(["good.test.domain", "extra.test.domain"], cert_key)
+
+      cert_count = Bullion::Models::Certificate.count
+      finalize_order(kid:, order_id: order.id, csr:)
+
+      expect(last_response.status).to eq(422)
+      expect(last_response.headers["Content-Type"]).to \
+        eq("application/problem+json")
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to \
+        eq("urn:ietf:params:acme:error:badCSR")
+
+      # Refusal must be side-effect free: no certificate was signed
+      expect(order.reload.certificate_id).to be_nil
+      expect(Bullion::Models::Certificate.count).to eq(cert_count)
+    end
+
+    context "with multi-identifier orders" do
+      def order_with_two_domains
+        register_account
+        kid = last_response.headers["Location"]
+
+        submit_order(key: account_key, kid:, identifiers: [
+                       { "type" => "dns", "value" => "first.test.domain" },
+                       { "type" => "dns", "value" => "second.test.domain" }
+                     ])
+        expect(last_response).to be_created
+        finalize_url = JSON.parse(last_response.body)["finalize"]
+        order_id = finalize_url.match(%r{/orders/(\d+)/finalize})[1].to_i
+
+        [kid, Bullion::Models::Order.find(order_id)]
+      end
+
+      it "does not mark an order ready until every authorization is valid" do
+        kid, order = order_with_two_domains
+
+        # Only the first identifier's challenge has been validated
+        verify_challenge(kid:, order_id: order.id)
+
+        expect(order.reload.status).to eq("pending")
+      end
+
+      it "refuses to finalize with an unvalidated authorization" do
+        kid, order = order_with_two_domains
+        verify_challenge(kid:, order_id: order.id)
+
+        cert_key = OpenSSL::PKey::RSA.new(2048)
+        csr = build_multi_domain_csr(["first.test.domain", "second.test.domain"], cert_key)
+
+        finalize_order(kid:, order_id: order.id, csr:)
+
+        expect(last_response.status).to eq(403)
+        expect(last_response.headers["Content-Type"]).to \
+          eq("application/problem+json")
+
+        parsed_body = JSON.parse(last_response.body)
+        expect(parsed_body["type"]).to \
+          eq("urn:ietf:params:acme:error:orderNotReady")
+
+        expect(order.reload.certificate_id).to be_nil
+      end
+
+      it "finalizes once every authorization is valid, covering both names" do
+        kid, order = order_with_two_domains
+
+        verify_challenge(kid:, order_id: order.id)
+        verify_challenge(kid:, order_id: order.id, authz_index: 1)
+
+        expect(order.reload.status).to eq("ready")
+
+        cert_key = OpenSSL::PKey::RSA.new(2048)
+        csr = build_multi_domain_csr(["first.test.domain", "second.test.domain"], cert_key)
+        finalize_order(kid:, order_id: order.id, csr:)
+
+        expect(last_response).to be_ok
+        parsed_body = JSON.parse(last_response.body)
+        expect(parsed_body["status"]).to eq("valid")
+        expect(parsed_body).to include("certificate")
+
+        cert_id = parsed_body["certificate"].split("/").last
+        cert_pem = Bullion::Models::Certificate.find(cert_id).data
+        cert = OpenSSL::X509::Certificate.new(cert_pem)
+        san = cert.extensions.find { it.oid == "subjectAltName" }.value
+        expect(san).to include("DNS:first.test.domain")
+        expect(san).to include("DNS:second.test.domain")
+      end
     end
 
     context "when finalizing an order that is not ready" do

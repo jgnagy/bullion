@@ -4,6 +4,9 @@ module Bullion
   # Common helper functions
   module Helpers
     # ACME-specific helper functions
+    # The ownership and revocation enforcement work grew this module past
+    # the default limit; the helpers are one cohesive ACME concern
+    # rubocop:disable-next Metrics/ModuleLength
     module Acme
       # Parses and verifies the incoming ACME JWT for authentication
       # @see https://tools.ietf.org/html/rfc8555#section-6.2
@@ -114,6 +117,111 @@ module Bullion
         true
       end
 
+      # Ownership enforcement
+      #
+      # ACME resources are private to the account that created them. Requests
+      # are authenticated via the JWS "kid" (see #parse_acme_jwt), and every
+      # by-ID lookup below is scoped to that account: a resource that is
+      # missing and a resource owned by someone else are both answered with a
+      # 404, so an attacker cannot even learn that another account's order,
+      # authorization, challenge, or certificate exists.
+
+      # Returns the Order named by params[:id] when the authenticated account
+      # owns it; nil when it is missing or belongs to a different account.
+      def owned_order
+        Models::Order.find_by(id: params[:id], account_id: @user.id)
+      end
+
+      # Returns the Authorization named by params[:id] when the authenticated
+      # account owns its order; nil when it is missing or foreign-owned.
+      def owned_authorization
+        Models::Authorization.joins(:order)
+                             .find_by(id: params[:id], orders: { account_id: @user.id })
+      end
+
+      # Returns the Challenge named by params[:id] when the authenticated
+      # account owns the challenge's order; nil when missing or foreign-owned.
+      def owned_challenge
+        Models::Challenge.joins(authorization: :order)
+                         .find_by(id: params[:id], orders: { account_id: @user.id })
+      end
+
+      # The identifiers whose authorizations this order has proven
+      def validated_domains(order)
+        order.authorizations.select(&:valid_status?).map { it.identifier["value"] }.sort
+      end
+
+      # Marks a just-validated challenge's authorization valid, and marks the
+      # order ready once every one of its authorizations is valid: a single
+      # valid challenge proves control of only one identifier, so a
+      # multi-identifier order must not become finalizable early.
+      def advance_validation!(challenge)
+        authorization = challenge.authorization
+        authorization.update!(status: "valid") unless authorization.valid_status?
+
+        order = authorization.order
+        return if order.ready_status?
+
+        order.update!(status: "ready") if order.authorizations.all?(&:valid_status?)
+      end
+
+      # Halts with an RFC 7807 problem document for an ACME error
+      def halt_acme_error(status, error_class, detail)
+        content_type "application/problem+json"
+        halt status, { type: error_class.new.acme_error, detail: }.to_json
+      end
+
+      # Refuses a request in the ACME not-found style (RFC 8555 section
+      # 6.7): the same problem document answers for resources that do not
+      # exist and resources owned by another account, so the existence of
+      # someone else's order, authorization, challenge, or certificate is
+      # never revealed.
+      def halt_acme_not_found
+        halt_acme_error(404, Bullion::Acme::Errors::Unauthorized, "Resource not found")
+      end
+
+      # Authenticates a revocation request per RFC 8555 section 7.6: a
+      # "kid" in the protected header authenticates the signing account as
+      # usual, while a bare "jwk" takes the emergency path — the JWS is
+      # verified against the certificate's own public key, so only the
+      # holder of the certificate's private key can produce such a request.
+      # The header's jwk is a JOSE marker here, not the trusted key: a
+      # valid signature under the certificate key proves possession, which
+      # is what the spec requires.
+      def authenticate_revocation!(cert)
+        return parse_acme_jwt if extract_header_data["kid"]
+
+        begin
+          parse_acme_jwt(cert.public_key)
+        rescue JWT::DecodeError, OpenSSL::PKey::PKeyError
+          halt_acme_not_found
+        end
+      end
+
+      # Whether the account may revoke the certificate record under RFC
+      # 8555 section 7.6: either it is the account the certificate was
+      # issued to, or it holds valid (non-deactivated) authorizations
+      # covering every identifier in the certificate. The jwk path needs
+      # no account check: its signature already proved possession of the
+      # certificate's private key.
+      def revocation_authorized?(account, record)
+        return true if record.order&.account_id == account.id
+
+        covered = Models::Authorization.joins(:order)
+                                       .where(orders: { account_id: account.id },
+                                              authorizations: { status: "valid" })
+                                       .map { it.identifier["value"] }
+
+        certificate_domains(record).all? { |domain| covered.include?(domain) }
+      end
+
+      # The identifiers a certificate covers (its subjectAltNames)
+      def certificate_domains(record)
+        domains = Array(record.alternate_names).map { it.delete_prefix("DNS:") }
+        domains = record.order.domains if domains.empty? && record.order
+        domains.sort
+      end
+
       def acme_csr_valid?(order_csr)
         csr = order_csr.csr
         order = order_csr.order
@@ -125,8 +233,13 @@ module Bullion
         # Make sure the CSR has a valid public key
         raise Bullion::Acme::Errors::BadCsr unless csr.verify(csr.public_key)
 
-        raise Bullion::Acme::Errors::BadCsr if csr_cn && !csr_domains.include?(csr_cn)
-        raise Bullion::Acme::Errors::BadCsr unless csr_domains.sort == order.domains.sort
+        # The CA may only sign identifiers the order has proven control of:
+        # the CSR's names must match the validated identifier set exactly, so
+        # no extra or substituted name can make it into a certificate.
+        validated = validated_domains(order)
+
+        raise Bullion::Acme::Errors::BadCsr if csr_cn && !validated.include?(csr_cn)
+        raise Bullion::Acme::Errors::BadCsr unless csr_domains.sort == validated
 
         true
       end
@@ -188,7 +301,11 @@ module Bullion
 
       def extract_valid_order_domains(order_domains)
         order_domains.reject do |domain|
-          Bullion.config.ca.domains.none? { domain["value"].end_with?(it) }
+          # Only allow a configured domain itself or a proper subdomain of it;
+          # the dot boundary stops "nottest.domain" from matching "test.domain"
+          Bullion.config.ca.domains.none? do |configured|
+            domain["value"] == configured || domain["value"].end_with?(".#{configured}")
+          end
         end
       end
 

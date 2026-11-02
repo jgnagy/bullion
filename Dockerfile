@@ -2,29 +2,43 @@ FROM ruby:4.0.9 AS build
 
 ENV RACK_ENV=development
 
+# Build toolchain and headers for native extensions. These packages (and their
+# compilers) stay in this stage; only the installed gem tree is copied forward.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+      build-essential libclang-dev libsqlite3-dev libsodium-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY . /build
-
-RUN apt-get update && apt-get upgrade -y && apt-get install -y libsqlite3-dev sqlite3 curl libsodium-dev build-essential libclang-dev
-
-RUN cd /build \
-    && gem build bullion.gemspec \
-    && mv bullion*.gem /bullion.gem
 
 WORKDIR /build
 
-FROM ruby:4.0.9
+RUN gem build bullion.gemspec \
+    && mv bullion*.gem /bullion.gem
+
+# Install the gem (compiling native extensions) while the toolchain is still
+# available. The gems land in the base image's GEM_HOME, which is copied into
+# the runtime stage below at the same path.
+RUN gem install --no-document /bullion.gem
+
+FROM ruby:4.0.9-slim
 LABEL maintainer="Jonathan Gnagy <jonathan.gnagy@gmail.com>"
 
 ENV BULLION_PORT=9292
 ENV RACK_ENV=production
 ENV DATABASE_URL=sqlite3:///tmp/bullion.db
 
-RUN apt-get update && apt-get upgrade -y && apt-get -y install libsqlite3-dev sqlite3 curl libsodium-dev build-essential libclang-dev
+# Runtime-only image: the apt build toolchain (build-essential, libclang-dev,
+# *-dev headers, curl) deliberately stays in the build stage. The slim ruby
+# base already provides the shared libraries the installed extensions link
+# against (libc, libm, libz, libssl/libcrypto, libgmp, libyaml), so no apt
+# layer is needed here.
 
 RUN mkdir /app
 
 COPY ./scripts/docker-entrypoint.sh /entrypoint.sh
-COPY --from=build /bullion.gem /app/bullion.gem
+COPY --from=build /usr/local/bundle /usr/local/bundle
 COPY ./db /app/db
 COPY ./config.ru /app/config.ru
 COPY ./Itsi.rb /app/Itsi.rb
@@ -39,8 +53,6 @@ RUN chmod +x /entrypoint.sh \
     && chown nobody /app
 
 WORKDIR /app
-
-RUN gem install bullion.gem
 
 # nobody user is uid 65534
 USER 65534

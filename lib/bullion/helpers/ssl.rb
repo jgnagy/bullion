@@ -7,6 +7,10 @@ module Bullion
     module Ssl
       # Converts the incoming key data to an OpenSSL public key usable to verify JWT signatures
       def openssl_compat(key_data)
+        # An OpenSSL key (e.g. a certificate's public key) is already usable;
+        # JWK hashes are converted below
+        return key_data if key_data.is_a?(OpenSSL::PKey::PKey)
+
         case key_data["kty"]
         when "RSA"
           key_data_to_rsa(key_data)

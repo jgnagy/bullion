@@ -74,6 +74,16 @@ module Bullion
         def acme_type = "unsupportedContact"
       end
 
+      # ACME exception for requests the account is not authorized to make.
+      # Also used for not-found-style refusals: the ACME registry has no
+      # generic "notFound" problem type, and "unauthorized" is its closest
+      # entry ("a request for an identifier the account is not authorized
+      # to manage"); the identical response for missing and foreign-owned
+      # resources keeps the two cases indistinguishable.
+      class Unauthorized < Bullion::Acme::Error
+        def acme_type = "unauthorized"
+      end
+
       # Non-standard exception for unsupported challenge types
       class UnsupportedChallengeType < Bullion::Acme::Error
         def acme_error = "urn:ietf:params:bullion:error:unsupportedChallengeType"

@@ -106,6 +106,22 @@ RSpec.describe Bullion::Services::CA do
     [OpenSSL::X509::Certificate.new("#{cert_pem}-----END CERTIFICATE-----\n"), cert_id]
   end
 
+  # The not-found refusals carry an RFC 7807 problem document (RFC 8555
+  # section 6.7) and are identical for missing and foreign-owned resources
+  def expect_acme_not_found
+    expect(last_response.status).to eq(404)
+    expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
+    expect_unauthorized_problem_document
+
+    [last_response.status, last_response.headers["Content-Type"], last_response.body]
+  end
+
+  def expect_unauthorized_problem_document
+    parsed_body = JSON.parse(last_response.body)
+    expect(parsed_body["type"]).to eq("urn:ietf:params:acme:error:unauthorized")
+    expect(parsed_body["detail"]).to be_a(String)
+  end
+
   context "when one account attacks another account's resources" do
     it "refuses order reads for another account's order" do
       attacker_kid = register_account(key: attacker_key, email: attacker_email)
@@ -115,8 +131,7 @@ RSpec.describe Bullion::Services::CA do
       body = acme_request("/orders/#{order.id}", "", key: attacker_key, kid: attacker_kid)
       post_acme("/orders/#{order.id}", body)
 
-      expect(last_response.status).to eq(404)
-      expect(last_response.body).to be_empty
+      expect_acme_not_found
       expect(order.reload.status).to eq("pending")
     end
 
@@ -130,8 +145,7 @@ RSpec.describe Bullion::Services::CA do
                           key: attacker_key, kid: attacker_kid)
       post_acme("/authorizations/#{authorization.id}", body)
 
-      expect(last_response.status).to eq(404)
-      expect(last_response.body).to be_empty
+      expect_acme_not_found
       expect(authorization.reload.status).to eq("pending")
     end
 
@@ -143,8 +157,7 @@ RSpec.describe Bullion::Services::CA do
 
       trigger_challenge(challenge, kid: attacker_kid, key: attacker_key)
 
-      expect(last_response.status).to eq(404)
-      expect(last_response.body).to be_empty
+      expect_acme_not_found
 
       # The validation attempt must never have run
       expect(challenge.reload.status).to eq("pending")
@@ -188,7 +201,7 @@ RSpec.describe Bullion::Services::CA do
       cert_count = Bullion::Models::Certificate.count
       finalize_order(kid: attacker_kid, key: attacker_key, order:, domain: victim_domain)
 
-      expect(last_response.status).to eq(404)
+      expect_acme_not_found
 
       # No certificate may be signed for the attacker's key
       order.reload
@@ -211,12 +224,29 @@ RSpec.describe Bullion::Services::CA do
                           key: attacker_key, kid: attacker_kid)
       post_acme("/revokecert", body)
 
-      expect(last_response.status).to eq(404)
+      expect_acme_not_found
 
       record = Bullion::Models::Certificate.find_by(serial: cert.serial.to_i)
       expect(record).not_to be_revoked
       expect(record.revoked_at).to be_nil
       expect(record.revocation_reason).to be_nil
+    end
+
+    it "answers foreign and missing orders identically" do
+      attacker_kid = register_account(key: attacker_key, email: attacker_email)
+      victim_kid = register_account(key: victim_key, email: victim_email)
+      order = create_order(kid: victim_kid, key: victim_key, domain: victim_domain)
+
+      foreign = acme_request("/orders/#{order.id}", "", key: attacker_key, kid: attacker_kid)
+      post_acme("/orders/#{order.id}", foreign)
+      foreign_response = expect_acme_not_found
+
+      missing = acme_request("/orders/999999", "", key: attacker_key, kid: attacker_kid)
+      post_acme("/orders/999999", missing)
+      missing_response = expect_acme_not_found
+
+      # The refusal is indistinguishable: same status, headers, and body
+      expect(foreign_response).to eq(missing_response)
     end
   end
 

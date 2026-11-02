@@ -432,13 +432,19 @@ RSpec.describe Bullion::Services::CA do
       }.to_json
 
       # Challenge lookups are scoped to the authenticated account, so a
-      # missing challenge answers with a 404 — exactly like a challenge
-      # that belongs to a different account (no existence leak).
+      # missing challenge answers with a 404 problem document — exactly
+      # like a challenge that belongs to a different account (no leak).
       post "/challenges/999999", body,
            { "CONTENT_TYPE" => "application/jose+json" }
 
       expect(last_response.status).to eq(404)
-      expect(last_response.body).to be_empty
+      expect(last_response.headers["Content-Type"]).to \
+        eq("application/problem+json")
+
+      # The problem document is parseable RFC 7807 with an ACME type
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to eq("urn:ietf:params:acme:error:unauthorized")
+      expect(parsed_body["detail"]).to be_a(String)
     end
 
     it "rejects orders with notAfter beyond the maximum validity duration" do

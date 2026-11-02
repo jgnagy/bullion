@@ -4,6 +4,9 @@ module Bullion
   # Common helper functions
   module Helpers
     # ACME-specific helper functions
+    # The ownership and revocation enforcement work grew this module past
+    # the default limit; the helpers are one cohesive ACME concern
+    # rubocop:disable-next Metrics/ModuleLength
     module Acme
       # Parses and verifies the incoming ACME JWT for authentication
       # @see https://tools.ietf.org/html/rfc8555#section-6.2
@@ -160,6 +163,63 @@ module Bullion
         return if order.ready_status?
 
         order.update!(status: "ready") if order.authorizations.all?(&:valid_status?)
+      end
+
+      # Halts with an RFC 7807 problem document for an ACME error
+      def halt_acme_error(status, error_class, detail)
+        content_type "application/problem+json"
+        halt status, { type: error_class.new.acme_error, detail: }.to_json
+      end
+
+      # Refuses a request in the ACME not-found style (RFC 8555 section
+      # 6.7): the same problem document answers for resources that do not
+      # exist and resources owned by another account, so the existence of
+      # someone else's order, authorization, challenge, or certificate is
+      # never revealed.
+      def halt_acme_not_found
+        halt_acme_error(404, Bullion::Acme::Errors::Unauthorized, "Resource not found")
+      end
+
+      # Authenticates a revocation request per RFC 8555 section 7.6: a
+      # "kid" in the protected header authenticates the signing account as
+      # usual, while a bare "jwk" takes the emergency path — the JWS is
+      # verified against the certificate's own public key, so only the
+      # holder of the certificate's private key can produce such a request.
+      # The header's jwk is a JOSE marker here, not the trusted key: a
+      # valid signature under the certificate key proves possession, which
+      # is what the spec requires.
+      def authenticate_revocation!(cert)
+        return parse_acme_jwt if extract_header_data["kid"]
+
+        begin
+          parse_acme_jwt(cert.public_key)
+        rescue JWT::DecodeError, OpenSSL::PKey::PKeyError
+          halt_acme_not_found
+        end
+      end
+
+      # Whether the account may revoke the certificate record under RFC
+      # 8555 section 7.6: either it is the account the certificate was
+      # issued to, or it holds valid (non-deactivated) authorizations
+      # covering every identifier in the certificate. The jwk path needs
+      # no account check: its signature already proved possession of the
+      # certificate's private key.
+      def revocation_authorized?(account, record)
+        return true if record.order&.account_id == account.id
+
+        covered = Models::Authorization.joins(:order)
+                                       .where(orders: { account_id: account.id },
+                                              authorizations: { status: "valid" })
+                                       .map { it.identifier["value"] }
+
+        certificate_domains(record).all? { |domain| covered.include?(domain) }
+      end
+
+      # The identifiers a certificate covers (its subjectAltNames)
+      def certificate_domains(record)
+        domains = Array(record.alternate_names).map { it.delete_prefix("DNS:") }
+        domains = record.order.domains if domains.empty? && record.order
+        domains.sort
       end
 
       def acme_csr_valid?(order_csr)

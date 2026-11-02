@@ -52,8 +52,7 @@ module Bullion
         raise "Unknown curve" unless curve_name
 
         key_group = OpenSSL::PKey::EC::Group.new(curve_name)
-        key_bn = OpenSSL::BN.new("\x04#{x}#{y}", 2)
-        key_point = OpenSSL::PKey::EC::Point.new(key_group, key_bn)
+        key_point = ec_point_from_jwk(key_group, x, y)
 
         pk_sequence = OpenSSL::ASN1::Sequence.new(
           [OpenSSL::ASN1::ObjectId("id-ecPublicKey"), OpenSSL::ASN1::ObjectId(curve_name)]
@@ -63,6 +62,18 @@ module Bullion
         outer_sequence = OpenSSL::ASN1::Sequence.new([pk_sequence, bitstring])
 
         OpenSSL::PKey::EC.new(outer_sequence.to_der)
+      end
+
+      # Builds an EC point from JWK coordinate octets. RFC 7518 requires
+      # fixed-width coordinates, and OpenSSL rejects anything else — a
+      # malformed or off-curve encoding must surface as an ACME
+      # "malformed" request error (RFC 8555 section 6.4), never as an
+      # unhandled exception.
+      # @see https://tools.ietf.org/html/rfc7518#section-6.2.1
+      def ec_point_from_jwk(group, x_octets, y_octets)
+        OpenSSL::PKey::EC::Point.new(group, OpenSSL::BN.new("\x04#{x_octets}#{y_octets}", 2))
+      rescue OpenSSL::PKey::EC::Point::Error => e
+        raise Bullion::Acme::Errors::Malformed, "Invalid EC public key: #{e.message}"
       end
 
       def key_data_to_eddsa(key_data)

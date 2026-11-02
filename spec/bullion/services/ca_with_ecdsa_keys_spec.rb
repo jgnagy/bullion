@@ -229,4 +229,69 @@ RSpec.describe Bullion::Services::CA do
       expect(cert.verify(Bullion.ca_key)).to be(true)
     end
   end
+
+  # RFC 7518 requires EC JWK coordinates to be fixed-width octet arrays.
+  # A JWK with a short coordinate is malformed, and the CA must answer it
+  # with a 400 problem document (RFC 8555 section 6.4) instead of an
+  # unhandled exception.
+  context "with a malformed EC JWK" do
+    it "responds with a 400 problem document instead of a server error" do
+      # Deterministically strip one byte from x: whatever key signed the
+      # request, the JWK itself is invalid.
+      short_x = Base64.urlsafe_decode64(ec_jwk["x"])[1..]
+      bad_jwk = ec_jwk.merge("x" => acme_base64(short_x))
+
+      header = build_protected_header(
+        alg: "ES256", jwk: bad_jwk, nonce: "unused", url: "/accounts"
+      )
+      encoded_protected = acme_base64(header.to_json)
+      encoded_payload = acme_base64({ contact: ["mailto:#{account_email}"] }.to_json)
+      signature = acme_sign(
+        ec_key, "#{encoded_protected}.#{encoded_payload}", hash_alg: "SHA256"
+      )
+
+      body = { protected: encoded_protected, payload: encoded_payload, signature: }.to_json
+      post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response).to be_bad_request
+      parsed = JSON.parse(last_response.body)
+      expect(parsed["type"]).to eq("urn:ietf:params:acme:error:malformed")
+      expect(parsed["detail"]).to include("Invalid EC public key")
+    end
+  end
+
+  # About 1 in 128 P-256 keys has a coordinate whose most-significant byte
+  # is zero. The JWK helper must emit those coordinates at full width: an
+  # integer round-trip (BN#to_s(2)) used to drop the leading zero byte and
+  # produce a 31-byte coordinate, which made roughly every twelfth suite
+  # run fail here with a 500 (ghostex-d76.4).
+  context "with a key whose coordinate has a leading zero byte" do
+    let(:leading_zero_coord_key) do
+      OpenSSL::PKey::EC.new(
+        <<~PEM
+          -----BEGIN EC PRIVATE KEY-----
+          MHcCAQEEIP4ooNMnCHzhhZP+CHITpc5BlQX1jQq1CAkk0banCzyCoAoGCCqGSM49
+          AwEHoUQDQgAEG+Bu51aZlarmpfy6c7BLGSSiiVxKb9HUnaQFzkhX3LAAVu5reCge
+          EVTP5q8STuZHMt3iDtQvrBy50cFSkfag2w==
+          -----END EC PRIVATE KEY-----
+        PEM
+      )
+    end
+
+    it "builds full-width JWK coordinates" do
+      jwk = ecdsa_public_key_hash(leading_zero_coord_key, "P-256")
+
+      x = Base64.urlsafe_decode64(jwk["x"])
+      y = Base64.urlsafe_decode64(jwk["y"])
+      expect(x.bytesize).to eq(32)
+      expect(y.bytesize).to eq(32)
+
+      # The coordinates must reconstruct the exact public point
+      point = OpenSSL::PKey::EC::Point.new(
+        leading_zero_coord_key.group, OpenSSL::BN.new("\x04#{x}#{y}", 2)
+      )
+      expect(point.to_octet_string(:uncompressed))
+        .to eq(leading_zero_coord_key.public_key.to_octet_string(:uncompressed))
+    end
+  end
 end

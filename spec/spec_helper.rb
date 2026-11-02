@@ -63,12 +63,15 @@ module BullionTest
     end
 
     def ecdsa_public_key_hash(key, crv = "P-256")
-      hex_key = key.public_key.to_bn.to_s(16)
-      hex_length = hex_key.size - 2
-      hex_x = hex_key[2, (hex_length / 2)]
-      hex_y = hex_key[(2 + (hex_length / 2)), (hex_length / 2)]
-      x = acme_base64(OpenSSL::BN.new([hex_x].pack("H*"), 2).to_s(2))
-      y = acme_base64(OpenSSL::BN.new([hex_y].pack("H*"), 2).to_s(2))
+      # RFC 7518 requires EC JWK coordinates to be fixed-width octet arrays:
+      # the full coordinate size for the curve. Slicing the uncompressed
+      # point octets preserves leading zero bytes, which an integer
+      # round-trip (BN#to_s(2)) silently drops for ~1 in 128 keys,
+      # producing short coordinates that the CA must reject.
+      octets = key.public_key.to_bn.to_s(2) # "\x04" || X || Y
+      width = (key.group.degree + 7) / 8
+      x = acme_base64(octets[1, width])
+      y = acme_base64(octets[1 + width, width])
       {
         "x" => x,
         "y" => y,

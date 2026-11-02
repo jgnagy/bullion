@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_16_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_02_000000) do
   create_table "accounts", force: :cascade do |t|
     t.text "contacts", null: false
     t.datetime "created_at", null: false
@@ -72,6 +72,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_16_000000) do
     t.datetime "created_at", null: false
     t.string "token", null: false
     t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_nonces_on_created_at"
     t.index ["token"], name: "index_nonces_on_token", unique: true
   end
 

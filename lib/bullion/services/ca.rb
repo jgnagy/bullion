@@ -9,8 +9,7 @@ module Bullion
       helpers Helpers::Ssl
 
       before do
-        Models::Nonce.clean_up! if rand(5) > 2 # randomly clean up
-        @new_nonce = Models::Nonce.create.token
+        @new_nonce = Models::Nonce.mint!
       end
 
       after do

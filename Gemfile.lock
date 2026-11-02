@@ -15,7 +15,7 @@ PATH
       sinatra-activerecord (~> 2.0)
       sinatra-contrib (>= 3.1, < 5.0)
       sqlite3 (~> 2.7)
-      trilogy (~> 2.9)
+      trilogy (~> 2.13.2)
 
 GEM
   remote: https://rubygems.org/
@@ -321,7 +321,7 @@ GEM
     thor (1.5.0)
     tilt (2.9.0)
     timeout (0.6.1)
-    trilogy (2.13.1)
+    trilogy (2.13.2)
       bigdecimal
     tsort (0.2.0)
     tzinfo (2.0.6)

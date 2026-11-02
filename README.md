@@ -24,7 +24,7 @@ The goal of the Bullion project is to make running a scalable, internal ACMEv2 C
 
 Before running Bullion, you need a CA key pair. Bullion requires two PEM files:
 
-- **`tls.key`** — An encrypted private key (RSA, ECDSA, or EdDSA) for signing certificates. Bullion supports encrypted PEM keys using AES-128-CBC.
+- **`tls.key`** — An encrypted private key (RSA, ECDSA, or EdDSA) for signing certificates. Bullion supports encrypted PEM keys using AES-128-CBC. The key must be encrypted with the passphrase given in `CA_SECRET` (see [CA Secret](#ca-secret)).
 - **`tls.crt`** — The corresponding public certificate. If Bullion is an intermediate CA, include the root CA's certificate in this file as well (certificate chain order: intermediate first, then root).
 
 You can generate these with OpenSSL. For example, a self-signed root CA:
@@ -155,7 +155,7 @@ Whether run locally or via Docker, the following environment variables configure
 | Environment Variable | Default Value | Description |
 | --- | --- | --- |
 | `CA_DIR` | `./tmp/` | Path to directory container the public and private key for Bullion. |
-| `CA_SECRET` | `SomeS3cret` | Secret used to read the encrypted `$CA_KEY` PEM. |
+| `CA_SECRET` | _None_ | **(Required outside development/test)** Passphrase used to decrypt the encrypted CA private key PEM. Bullion refuses to boot when it is missing. See [CA Secret](#ca-secret). |
 | `CA_KEY_PATH` | `$CA_DIR/tls.key` | Private signer key for Bullion. Keep this safe! |
 | `CA_CERT_PATH` | `$CA_DIR/tls.crt` | Public cert for Bullion. If Bullion is an intermediate CA, you'll want to include the root CA's public cert in this file as well the signed cert for Bullion. |
 | `CA_DOMAINS` | `example.com` | A comma-delimited list of domains for which Bullion will sign certificate requests. Subdomains are automatically allowed. Certificates containing other domains will be rejected. |
@@ -170,6 +170,43 @@ Whether run locally or via Docker, the following environment variables configure
 | `RACK_ENV` | `production`* | When run via Docker, the default is `production`, when run via `rake local_demo` it is `development`. Used to tell Bullion if it is run in development mode or for testing. |
 
 Because Bullion serves requests through Itsi's [fiber scheduler](https://itsi.fyi/options/fiber_scheduler/), each in-flight request leases its own database connection. ActiveRecord's connection pool defaults to 5 connections, so raise `max_connections` on `DATABASE_URL` if you expect more concurrent requests. `checkout_timeout` (default 5 seconds) controls how long a request waits for a connection before failing.
+
+#### CA Secret
+
+`CA_SECRET` is the passphrase that decrypts the CA private key (`tls.key`). Bullion
+**refuses to boot** (raising `Bullion::ConfigError`) when `CA_SECRET` is missing or
+blank and `RACK_ENV` is anything other than `development` or `test` — there is no
+default passphrase in production.
+
+Generate a strong passphrase and keep it in your secret manager:
+
+```bash
+openssl rand -base64 48   # e.g. a 64-character random string
+```
+
+The CA private key **must be encrypted with that exact passphrase**. Bullion decrypts
+encrypted PEM keys with OpenSSL, so AES-128-CBC and AES-256-CBC both work:
+
+```bash
+# Generate a new encrypted key
+openssl genrsa -aes256 -out tls.key 4096
+
+# Or re-encrypt an existing key with a new passphrase
+openssl pkey -aes256 -in tls.key -out tls.key.new
+```
+
+Then start Bullion with that same passphrase in the environment:
+
+```bash
+export CA_SECRET='<the passphrase you encrypted the key with>'
+itsi
+```
+
+In development and test environments (`RACK_ENV=development` or `RACK_ENV=test`),
+Bullion falls back to a well-known, development-only passphrase so that the `rake`
+demo and test tasks work out of the box; it logs a warning whenever it does so.
+That fallback is never used when `RACK_ENV` is `production` — or when `RACK_ENV` is
+unset, which is treated as a production-like environment.
 
 ### Integrating
 

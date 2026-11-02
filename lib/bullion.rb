@@ -34,9 +34,22 @@ module Bullion
   LOGGER = Logger.new($stdout)
   LOGGER.level = ENV.fetch("LOG_LEVEL", :warn)
 
+  # Environments in which Bullion is allowed to fall back to a well-known,
+  # development-only passphrase for the CA private key. Every other environment
+  # (production, or an unset RACK_ENV) must supply CA_SECRET explicitly.
+  DEV_OR_TEST_ENVIRONMENTS = %w[development test].freeze
+
+  # Development/test-only fallback passphrase for the CA private key. This value is
+  # deliberately well-known: it exists so that local development and the test suite
+  # can boot without extra setup. It is never used when RACK_ENV is something other
+  # than "development" or "test".
+  DEV_ONLY_SECRET = "SomeS3cret"
+
   setting :ca, reader: true do
     setting :dir, default: "tmp", constructor: -> { File.expand_path(it) }
-    setting :secret, default: "SomeS3cret"
+    # The passphrase used to decrypt the CA private key. There is deliberately no
+    # default here; see {resolve_ca_secret} and {validate_config!}.
+    setting :secret
     setting(
       :key_path,
       default: "tls.key",
@@ -71,11 +84,23 @@ module Bullion
   MetricsRegistry = Prometheus::Client.registry
 
   def self.ca_key
-    @ca_key ||= begin
-      OpenSSL::PKey::RSA.new(File.read(config.ca.key_path), config.ca.secret)
+    @ca_key ||= load_ca_key
+  end
+
+  # Loads the CA private key, decrypting it with the configured passphrase
+  # @raise [ConfigError] if the key cannot be decrypted with the configured passphrase
+  # @return [OpenSSL::PKey::RSA, OpenSSL::PKey::EC] the decrypted CA private key
+  def self.load_ca_key
+    pem = File.read(config.ca.key_path)
+    begin
+      OpenSSL::PKey::RSA.new(pem, config.ca.secret)
     rescue OpenSSL::PKey::RSAError
-      OpenSSL::PKey::EC.new(File.read(config.ca.key_path), config.ca.secret)
+      OpenSSL::PKey::EC.new(pem, config.ca.secret)
     end
+  rescue OpenSSL::PKey::ECError => e
+    raise ConfigError,
+          "Unable to decrypt the CA private key at #{config.ca.key_path}: check that CA_SECRET " \
+          "matches the passphrase used to encrypt the key (#{e.message})"
   end
 
   def self.ca_cert_file
@@ -94,10 +119,39 @@ module Bullion
     true
   end
 
+  # Resolves the passphrase used to decrypt the CA private key.
+  #
+  # An explicitly configured passphrase always wins. When none is given, a
+  # development/test-only fallback is used so that local development and the test
+  # suite can boot without extra setup. In every other environment (production, or
+  # an unset RACK_ENV) this resolves to +nil+ so that {.validate_config!} fails
+  # closed instead of silently using a well-known passphrase.
+  #
+  # @param secret [String, nil] the configured CA_SECRET value, if any
+  # @param rack_env [String, nil] the RACK_ENV value, if any
+  # @return [String, nil] the passphrase to use, or +nil+ when one is required
+  def self.resolve_ca_secret(secret, rack_env = ENV.fetch("RACK_ENV", nil))
+    return secret unless secret.nil? || secret.to_s.strip.empty?
+
+    DEV_OR_TEST_ENVIRONMENTS.include?(rack_env) ? DEV_ONLY_SECRET : nil
+  end
+
+  # Ensures the passphrase used to decrypt the CA private key is present
+  # @raise [ConfigError] if the passphrase is missing, blank, or not a String
+  # @return [void]
+  def self.validate_ca_secret!
+    secret = config.ca.secret
+    return if secret.is_a?(String) && !secret.strip.empty?
+
+    raise ConfigError,
+          "Missing or invalid CA_SECRET: set the CA_SECRET environment variable to the " \
+          "passphrase that decrypts the CA private key at #{config.ca.key_path}"
+  end
+
   # Ensures configuration settings are valid
   # @see https://support.apple.com/en-us/HT211025
   def self.validate_config! # rubocop:disable Metrics/AbcSize
-    raise ConfigError, "Invalid Key Passphrase" unless config.ca.secret.is_a?(String)
+    validate_ca_secret!
 
     unless File.readable?(config.ca.key_path)
       raise ConfigError,
@@ -130,8 +184,18 @@ Bullion.configure do |config|
   db_url       = ENV.fetch("DATABASE_URL", nil)
   nameservers  = ENV.fetch("DNS01_NAMESERVERS", nil)
 
+  # The CA passphrase has no default outside of development and test environments;
+  # resolve it here so that an unset CA_SECRET fails closed at boot.
+  resolved_secret = Bullion.resolve_ca_secret(ca_secret)
+  if resolved_secret == Bullion::DEV_ONLY_SECRET && ca_secret.to_s.strip.empty?
+    Bullion::LOGGER.warn(
+      "CA_SECRET is not set; using the well-known development-only CA passphrase. Set " \
+      "CA_SECRET to a strong passphrase for any non-development deployment."
+    )
+  end
+
   config.ca.dir = ca_dir if ca_dir
-  config.ca.secret = ca_secret if ca_secret
+  config.ca.secret = resolved_secret
   config.ca.key_path = ca_key_path if ca_key_path
   config.ca.cert_path = ca_cert_path if ca_cert_path
   config.ca.domains = ca_domains if ca_domains
@@ -167,7 +231,7 @@ require "bullion/challenge_client"
 require "bullion/challenge_clients/dns"
 require "bullion/challenge_clients/http"
 
-if %w[development test].include?(ENV["RACK_ENV"])
+if Bullion::DEV_OR_TEST_ENVIRONMENTS.include?(ENV["RACK_ENV"])
   require "bullion/rspec/challenge_clients/dns"
   require "bullion/rspec/challenge_clients/http"
 

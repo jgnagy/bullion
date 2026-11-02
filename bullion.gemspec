@@ -48,9 +48,9 @@ Gem::Specification.new do |spec|
   # json 2.21.2 fixes CVE-2026-71847 and supersedes the earlier parser fixes.
   spec.add_dependency "json",                 ">= 2.21.2", "< 3.0"
   spec.add_dependency "jwt",                  ">= 3.2.0", "< 4.0"
-  spec.add_dependency "jwt-eddsa",            "~> 0.9"
+  spec.add_dependency "jwt-eddsa",            ">= 0.9", "< 2.0"
   spec.add_dependency "openssl",              ">= 3.0", "< 5.0"
-  spec.add_dependency "prometheus-client",    "~> 4.2"
+  spec.add_dependency "prometheus-client",    ">= 4.2", "< 6.0"
   spec.add_dependency "sinatra",              ">= 3.1", "< 5.0"
   spec.add_dependency "sinatra-activerecord", "~> 2.0"
   spec.add_dependency "sinatra-contrib",      ">= 3.1", "< 5.0"
@@ -66,8 +66,8 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rubocop",             "~> 1.57"
   spec.add_development_dependency "rubocop-rake",        "~> 0.6"
   spec.add_development_dependency "rubocop-rspec",       "~> 3.5"
-  spec.add_development_dependency "simplecov",           "~> 0.22"
-  spec.add_development_dependency "simplecov-cobertura", "~> 2.1"
+  spec.add_development_dependency "simplecov",           "~> 1.3"
+  spec.add_development_dependency "simplecov-cobertura", "~> 4.0"
   spec.add_development_dependency "solargraph",          "~> 0.49"
   spec.add_development_dependency "yard",                "~> 0.9"
 end

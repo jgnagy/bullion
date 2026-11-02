@@ -6,7 +6,11 @@ Bullion.validate_config!
 require "prometheus/middleware/collector"
 require "prometheus/middleware/exporter"
 
-use Rack::ShowExceptions
+# Rack::ShowExceptions renders exception messages and backtraces; keep it out
+# of production so a request that escapes Sinatra's handlers cannot leak them.
+use Rack::ShowExceptions if Bullion::DEV_OR_TEST_ENVIRONMENTS.include?(
+  ENV.fetch("RACK_ENV", "development")
+)
 use Rack::Deflater
 use Prometheus::Middleware::Collector
 use Prometheus::Middleware::Exporter

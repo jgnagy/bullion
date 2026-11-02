@@ -25,6 +25,12 @@ RSpec.describe Bullion::Models::Certificate do
     csr
   end
 
+  it "mints a positive 64-bit serial from a CSPRNG" do
+    allow(SecureRandom).to receive(:hex).with(8).and_return("ffffffffffffffff")
+
+    expect(described_class.new.serial).to eq(0x7FFF_FFFF_FFFF_FFFF)
+  end
+
   it "supports fingerprinting" do
     expect(subject.fingerprint).to be_a(String)
   end

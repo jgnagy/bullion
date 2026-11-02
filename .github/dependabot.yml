@@ -1,0 +1,30 @@
+version: 2
+
+updates:
+  - package-ecosystem: "bundler"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      ruby-dependencies:
+        patterns:
+          - "*"
+    ignore:
+      # Linter and analysis majors change rule sets; adopt them deliberately.
+      - dependency-name: "rubocop*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "solargraph"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      # Keep Ruby major/minor bumps deliberate; patch updates still flow.
+      - dependency-name: "ruby"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"

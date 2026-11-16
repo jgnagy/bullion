@@ -5,8 +5,11 @@ module Bullion
     # ACME protocol errors super class
     class Error < Bullion::Error
       # @see https://tools.ietf.org/html/rfc8555#section-6.7
+      # RFC 8555 section 6.7 says the ACME URN namespace must not be used for
+      # unregistered error types, so the generic fallback is the registered
+      # "serverInternal" type.
       def acme_type
-        "genericError"
+        "serverInternal"
       end
 
       def acme_preface
@@ -39,9 +42,14 @@ module Bullion
         def acme_type = "badPublicKey"
       end
 
-      # ACME exception for bad certificates
+      # ACME exception for unidentifiable certificates, e.g. a revocation
+      # request for a certificate this CA never issued. RFC 8555 section 6.7
+      # and the IANA ACME Error Types registry have no dedicated type for
+      # this situation, and a client-correctable 400 must not be labelled a
+      # server-internal error, so this uses the Bullion-specific URN
+      # namespace (as with UnsupportedChallengeType).
       class BadCertificate < Bullion::Acme::Error
-        def acme_type = "badCertificate"
+        def acme_error = "urn:ietf:params:bullion:error:badCertificate"
       end
 
       # ACME exception for already-revoked certificates
@@ -54,14 +62,20 @@ module Bullion
         def acme_type = "invalidContact"
       end
 
-      # ACME exception for invalid orders
-      class InvalidOrder < Bullion::Acme::Error
-        def acme_type = "invalidOrder"
-      end
-
       # ACME exception for malformed requests
       class Malformed < Bullion::Acme::Error
         def acme_type = "malformed"
+      end
+
+      # ACME exception for identifiers the server will not issue
+      # certificates for
+      class RejectedIdentifier < Bullion::Acme::Error
+        def acme_type = "rejectedIdentifier"
+      end
+
+      # ACME exception for unsupported identifier types
+      class UnsupportedIdentifier < Bullion::Acme::Error
+        def acme_type = "unsupportedIdentifier"
       end
 
       # ACME exception for orders that aren't ready to be finalized
@@ -84,7 +98,9 @@ module Bullion
         def acme_type = "unauthorized"
       end
 
-      # Non-standard exception for unsupported challenge types
+      # Non-standard exception for unsupported challenge types. Per RFC 8555
+      # section 6.7, non-registered error types must not use the ACME URN
+      # namespace, so this uses the Bullion-specific one.
       class UnsupportedChallengeType < Bullion::Acme::Error
         def acme_error = "urn:ietf:params:bullion:error:unsupportedChallengeType"
       end

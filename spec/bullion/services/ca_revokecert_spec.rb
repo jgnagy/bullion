@@ -183,7 +183,21 @@ RSpec.describe Bullion::Services::CA do
       expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
 
       parsed = JSON.parse(last_response.body)
-      expect(parsed["type"]).to eq("urn:ietf:params:acme:error:badCertificate")
+      expect(parsed["type"]).to eq("urn:ietf:params:bullion:error:badCertificate")
+    end
+
+    it "rejects an undecodable certificate payload" do
+      kid = register_account
+
+      body = acme_request("/revokecert",
+                          { certificate: "aGVsbG8tdGhpcy1pcy1ub3QtYS1jZXJ0aWZpY2F0ZQ" }, kid:)
+      post "/revokecert", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
+
+      parsed = JSON.parse(last_response.body)
+      expect(parsed["type"]).to eq("urn:ietf:params:acme:error:malformed")
     end
   end
 end

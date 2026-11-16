@@ -6,11 +6,15 @@ module Bullion
     class OrderCsr
       class << self
         def from_acme_request(order, raw_data)
-          decoded_data = Base64.urlsafe_decode64(raw_data)
+          decoded_data = Base64.urlsafe_decode64(raw_data.to_s)
           reencoded_data = Base64.encode64(decoded_data)
           csr_string = openssl_compat_csr(reencoded_data)
 
           new(order, csr_string)
+        rescue ArgumentError, OpenSSL::X509::RequestError
+          # A payload that is not valid base64url or does not parse as a
+          # PKCS#10 request is an unacceptable CSR, not a server fault.
+          raise Bullion::Acme::Errors::BadCsr, "Unable to parse CSR from the request payload"
         end
 
         private

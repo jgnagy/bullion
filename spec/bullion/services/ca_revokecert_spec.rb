@@ -183,7 +183,7 @@ RSpec.describe Bullion::Services::CA do
       expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
 
       parsed = JSON.parse(last_response.body)
-      expect(parsed["type"]).to eq("urn:ietf:params:acme:error:serverInternal")
+      expect(parsed["type"]).to eq("urn:ietf:params:bullion:error:badCertificate")
     end
 
     it "rejects an undecodable certificate payload" do

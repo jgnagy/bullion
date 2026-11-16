@@ -45,9 +45,11 @@ module Bullion
       # ACME exception for unidentifiable certificates, e.g. a revocation
       # request for a certificate this CA never issued. RFC 8555 section 6.7
       # and the IANA ACME Error Types registry have no dedicated type for
-      # this situation, so this maps to the registered generic error type.
+      # this situation, and a client-correctable 400 must not be labelled a
+      # server-internal error, so this uses the Bullion-specific URN
+      # namespace (as with UnsupportedChallengeType).
       class BadCertificate < Bullion::Acme::Error
-        def acme_type = "serverInternal"
+        def acme_error = "urn:ietf:params:bullion:error:badCertificate"
       end
 
       # ACME exception for already-revoked certificates

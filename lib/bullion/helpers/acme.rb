@@ -266,13 +266,16 @@ module Bullion
       def order_valid?(hash)
         validate_order_nb_and_na(hash["notBefore"], hash["notAfter"])
 
-        # Don't approve empty orders
-        raise Bullion::Acme::Errors::Malformed, "Empty order!" if hash["identifiers"].empty?
+        identifiers = hash["identifiers"]
+        validate_identifiers(identifiers)
 
-        order_domains = hash["identifiers"].select { it["type"] == "dns" }
+        # Don't approve empty orders
+        raise Bullion::Acme::Errors::Malformed, "Empty order!" if identifiers.empty?
+
+        order_domains = identifiers.select { it["type"] == "dns" }
 
         # Don't approve an order with identifiers that _aren't_ of type 'dns'
-        unless hash["identifiers"] == order_domains
+        unless identifiers == order_domains
           raise Bullion::Acme::Errors::UnsupportedIdentifier, 'Only type "dns" allowed'
         end
 
@@ -299,8 +302,8 @@ module Bullion
 
         return unless not_before && not_after
 
-        nb = Time.parse(not_before)
-        na = Time.parse(not_after)
+        nb = parse_time(not_before)
+        na = parse_time(not_after)
 
         # don't allow nonsense certs
         raise Bullion::Acme::Errors::Malformed, "notBefore must be before notAfter" unless nb < na
@@ -319,6 +322,31 @@ module Bullion
       # rubocop:enable Metrics/AbcSize
       # rubocop:enable Metrics/CyclomaticComplexity
       # rubocop:enable Metrics/PerceivedComplexity
+
+      # Parses an ISO-8601-ish timestamp; an unparseable value is a
+      # client-malformed request, never a server fault.
+      def parse_time(value)
+        Time.parse(value)
+      rescue ArgumentError, TypeError
+        raise Bullion::Acme::Errors::Malformed, "Unparseable time value: #{value.inspect}"
+      end
+
+      # Validates that the newOrder identifiers are objects with string
+      # "type" and "value" members; anything else is a malformed request.
+      def validate_identifiers(identifiers)
+        unless identifiers.is_a?(Array)
+          raise Bullion::Acme::Errors::Malformed, "identifiers must be an array of objects"
+        end
+
+        identifiers.each do |identifier|
+          next if identifier.is_a?(Hash) &&
+                  identifier["type"].is_a?(String) &&
+                  identifier["value"].is_a?(String)
+
+          raise Bullion::Acme::Errors::Malformed,
+                'each identifier must be an object with string "type" and "value"'
+        end
+      end
 
       def extract_valid_order_domains(order_domains)
         order_domains.reject do |domain|

@@ -214,6 +214,118 @@ RSpec.describe Bullion::Services::CA do
         eq("urn:ietf:params:acme:error:malformed")
     end
 
+    it "rejects orders with unparseable notBefore/notAfter" do
+      register_account
+      kid = last_response.headers["Location"]
+
+      get "/nonces"
+      nonce = last_response.headers["Replay-Nonce"]
+
+      jwk = {
+        typ: "JWT",
+        alg: "RS256",
+        kid:,
+        nonce:,
+        url: "/orders"
+      }.to_json
+      encoded_jwk = acme_base64(jwk)
+      payload = {
+        identifiers: [{ "type" => "dns", "value" => "good.test.domain" }],
+        notBefore: "not-a-date",
+        notAfter: "also-not-a-date"
+      }.to_json
+      encoded_payload = acme_base64(payload)
+      signature_data = "#{encoded_jwk}.#{encoded_payload}"
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_sign(account_key, signature_data)
+      }.to_json
+
+      post "/orders", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.headers["Content-Type"]).to \
+        eq("application/problem+json")
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to \
+        eq("urn:ietf:params:acme:error:malformed")
+    end
+
+    it "rejects orders with missing identifiers" do
+      register_account
+      kid = last_response.headers["Location"]
+
+      get "/nonces"
+      nonce = last_response.headers["Replay-Nonce"]
+
+      jwk = {
+        typ: "JWT",
+        alg: "RS256",
+        kid:,
+        nonce:,
+        url: "/orders"
+      }.to_json
+      encoded_jwk = acme_base64(jwk)
+      payload = {}.to_json
+      encoded_payload = acme_base64(payload)
+      signature_data = "#{encoded_jwk}.#{encoded_payload}"
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_sign(account_key, signature_data)
+      }.to_json
+
+      post "/orders", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.headers["Content-Type"]).to \
+        eq("application/problem+json")
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to \
+        eq("urn:ietf:params:acme:error:malformed")
+    end
+
+    it "rejects orders with non-object identifiers" do
+      register_account
+      kid = last_response.headers["Location"]
+
+      get "/nonces"
+      nonce = last_response.headers["Replay-Nonce"]
+
+      jwk = {
+        typ: "JWT",
+        alg: "RS256",
+        kid:,
+        nonce:,
+        url: "/orders"
+      }.to_json
+      encoded_jwk = acme_base64(jwk)
+      payload = { identifiers: [{ "type" => "dns" }] }.to_json
+      encoded_payload = acme_base64(payload)
+      signature_data = "#{encoded_jwk}.#{encoded_payload}"
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_sign(account_key, signature_data)
+      }.to_json
+
+      post "/orders", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.headers["Content-Type"]).to \
+        eq("application/problem+json")
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to \
+        eq("urn:ietf:params:acme:error:malformed")
+    end
+
     it "rejects orders with non-dns identifiers" do
       register_account
       kid = last_response.headers["Location"]

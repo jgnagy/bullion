@@ -197,10 +197,10 @@ module Bullion
       post "/orders" do
         parse_acme_jwt
 
+        order_valid?(@payload_data)
+
         # Only identifiers of type "dns" are supported
         identifiers = @payload_data["identifiers"].select { it["type"] == "dns" }
-
-        order_valid?(@payload_data)
 
         order = @user.start_order(
           identifiers:,

@@ -181,7 +181,10 @@ RSpec.describe Bullion::Services::CA do
       # A foreign certificate answers exactly like a missing one: 422 with
       # no certificate material in the body
       expect(last_response.status).to eq(422)
-      expect(JSON.parse(last_response.body)).to eq("error" => "Order not valid")
+      expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to eq("urn:ietf:params:acme:error:orderNotReady")
+      expect(parsed_body["detail"]).to eq("Order not valid")
       expect(last_response.body).not_to include("BEGIN CERTIFICATE")
 
       record = Bullion::Models::Certificate.find_by(serial: cert.serial.to_i)
@@ -300,8 +303,26 @@ RSpec.describe Bullion::Services::CA do
       post_acme("/accounts/#{victim_id}", body)
 
       expect(last_response.status).to eq(403)
+      expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
       parsed_body = JSON.parse(last_response.body)
-      expect(parsed_body["error"]).to eq("Accounts can only view or update themselves")
+      expect(parsed_body["type"]).to eq("urn:ietf:params:acme:error:unauthorized")
+      expect(parsed_body["detail"]).to eq("Accounts can only view or update themselves")
+    end
+
+    it "refuses order listings for another account" do
+      attacker_kid = register_account(key: attacker_key, email: attacker_email)
+      victim_kid = register_account(key: victim_key, email: victim_email)
+      victim_id = victim_kid.split("/").last
+
+      body = acme_request("/accounts/#{victim_id}/orders", "",
+                          key: attacker_key, kid: attacker_kid)
+      post_acme("/accounts/#{victim_id}/orders", body)
+
+      expect(last_response.status).to eq(403)
+      expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to eq("urn:ietf:params:acme:error:unauthorized")
+      expect(parsed_body["detail"]).to eq("Accounts can only view or update themselves")
     end
 
     it "lets the owner list their own orders" do

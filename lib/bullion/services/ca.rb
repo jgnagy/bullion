@@ -132,7 +132,7 @@ module Bullion
         if @payload_data["onlyReturnExisting"]
           content_type "application/problem+json"
           unless user
-            raise Bullion::Acme::Error::AccountDoesNotExist,
+            raise Bullion::Acme::Errors::AccountDoesNotExist,
                   "onlyReturnExisting requested and account does not exist"
           end
         end
@@ -161,10 +161,9 @@ module Bullion
         parse_acme_jwt
 
         unless params[:id].to_i == @user.id
-          content_type "application/json"
           add_acme_headers @new_nonce
-
-          halt 403, { error: "Accounts can only view or update themselves" }.to_json
+          halt_acme_error(403, Bullion::Acme::Errors::Unauthorized,
+                          "Accounts can only view or update themselves")
         end
 
         content_type "application/json"
@@ -180,10 +179,9 @@ module Bullion
         parse_acme_jwt
 
         unless params[:id].to_i == @user.id
-          content_type "application/json"
           add_acme_headers @new_nonce
-
-          halt 403, { error: "Accounts can only view or update themselves" }.to_json
+          halt_acme_error(403, Bullion::Acme::Errors::Unauthorized,
+                          "Accounts can only view or update themselves")
         end
 
         content_type "application/json"
@@ -370,7 +368,7 @@ module Bullion
 
           cert.data + Bullion.ca_cert_file
         else
-          halt(422, { error: "Order not valid" }.to_json)
+          halt_acme_error(422, Bullion::Acme::Errors::OrderNotReady, "Order not valid")
         end
       end
 
@@ -378,9 +376,13 @@ module Bullion
       # @see https://tools.ietf.org/html/rfc8555#section-7.6
       post "/revokecert" do
         # The certificate is base64url-encoded DER
-        cert = OpenSSL::X509::Certificate.new(
-          Base64.urlsafe_decode64(extract_payload_data["certificate"])
-        )
+        cert = begin
+          OpenSSL::X509::Certificate.new(
+            Base64.urlsafe_decode64(extract_payload_data["certificate"].to_s)
+          )
+        rescue ArgumentError, TypeError, OpenSSL::X509::CertificateError
+          raise Bullion::Acme::Errors::Malformed, "The certificate could not be decoded"
+        end
 
         # RFC 8555 section 7.6: a revocation is accepted from the account
         # that was issued the certificate, from an account holding valid

@@ -175,7 +175,7 @@ RSpec.describe Bullion::Services::CA do
 
       parsed_body = JSON.parse(last_response.body)
       expect(parsed_body["type"]).to \
-        eq("urn:ietf:params:acme:error:invalidOrder")
+        eq("urn:ietf:params:acme:error:rejectedIdentifier")
     end
 
     it "rejects orders with empty identifiers" do
@@ -211,7 +211,7 @@ RSpec.describe Bullion::Services::CA do
 
       parsed_body = JSON.parse(last_response.body)
       expect(parsed_body["type"]).to \
-        eq("urn:ietf:params:acme:error:invalidOrder")
+        eq("urn:ietf:params:acme:error:malformed")
     end
 
     it "rejects orders with non-dns identifiers" do
@@ -248,7 +248,7 @@ RSpec.describe Bullion::Services::CA do
 
       parsed_body = JSON.parse(last_response.body)
       expect(parsed_body["type"]).to \
-        eq("urn:ietf:params:acme:error:invalidOrder")
+        eq("urn:ietf:params:acme:error:unsupportedIdentifier")
     end
 
     it "allows orders for an exact configured domain" do
@@ -284,7 +284,7 @@ RSpec.describe Bullion::Services::CA do
 
       parsed_body = JSON.parse(last_response.body)
       expect(parsed_body["type"]).to \
-        eq("urn:ietf:params:acme:error:invalidOrder")
+        eq("urn:ietf:params:acme:error:rejectedIdentifier")
     end
 
     it "rejects orders for proper suffixes of a configured domain" do
@@ -300,7 +300,7 @@ RSpec.describe Bullion::Services::CA do
 
       parsed_body = JSON.parse(last_response.body)
       expect(parsed_body["type"]).to \
-        eq("urn:ietf:params:acme:error:invalidOrder")
+        eq("urn:ietf:params:acme:error:rejectedIdentifier")
     end
 
     it "rejects orders for domains unrelated to any configured domain" do
@@ -316,7 +316,7 @@ RSpec.describe Bullion::Services::CA do
 
       parsed_body = JSON.parse(last_response.body)
       expect(parsed_body["type"]).to \
-        eq("urn:ietf:params:acme:error:invalidOrder")
+        eq("urn:ietf:params:acme:error:rejectedIdentifier")
     end
 
     it "rejects account registration with contact as a non-array" do
@@ -486,7 +486,7 @@ RSpec.describe Bullion::Services::CA do
 
       parsed_body = JSON.parse(last_response.body)
       expect(parsed_body["type"]).to \
-        eq("urn:ietf:params:acme:error:invalidOrder")
+        eq("urn:ietf:params:acme:error:malformed")
     end
 
     it "rejects finalization with CSR for wrong domain" do
@@ -515,6 +515,28 @@ RSpec.describe Bullion::Services::CA do
         eq("application/problem+json")
 
       # BadCsr error type maps to "badCSR" in the ACME error class
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to \
+        eq("urn:ietf:params:acme:error:badCSR")
+    end
+
+    it "rejects finalization with an unparseable CSR" do
+      register_account
+      kid = last_response.headers["Location"]
+
+      submit_order(key: account_key, kid:, identifiers: [{ "type" => "dns",
+                                                           "value" => "good.test.domain" }])
+      expect(last_response).to be_created
+      finalize_url = JSON.parse(last_response.body)["finalize"]
+      order_id = finalize_url.match(%r{/orders/(\d+)/finalize})[1].to_i
+
+      bogus_csr = Struct.new(:to_der).new("this is not a CSR")
+      finalize_order(kid:, order_id:, csr: bogus_csr)
+
+      expect(last_response.status).to eq(422)
+      expect(last_response.headers["Content-Type"]).to \
+        eq("application/problem+json")
+
       parsed_body = JSON.parse(last_response.body)
       expect(parsed_body["type"]).to \
         eq("urn:ietf:params:acme:error:badCSR")

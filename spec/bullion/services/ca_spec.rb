@@ -312,6 +312,36 @@ RSpec.describe Bullion::Services::CA do
       expect(parsed_body["orders"]).to match(%r{http://.+/accounts/[0-9]+/orders})
     end
 
+    it "returns accountDoesNotExist when onlyReturnExisting and the account is unknown" do
+      fresh_key = OpenSSL::PKey::RSA.new(2048)
+      jwk = {
+        typ: "JWT",
+        alg: "RS256",
+        jwk: rsa_public_key_hash(fresh_key)
+      }.to_json
+      encoded_jwk = acme_base64(jwk)
+      payload = {
+        contact: ["mailto:fresh@example.com"],
+        onlyReturnExisting: true
+      }.to_json
+      encoded_payload = acme_base64(payload)
+      signature_data = "#{encoded_jwk}.#{encoded_payload}"
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_sign(fresh_key, signature_data)
+      }.to_json
+
+      post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to eq("urn:ietf:params:acme:error:accountDoesNotExist")
+    end
+
     it "validates acme account fields" do
       jwk = {
         typ: "JWT",
@@ -562,6 +592,40 @@ RSpec.describe Bullion::Services::CA do
       expect(parsed_body["authorizations"].size).to eq(2)
       expect(parsed_body["identifiers"]).to eq(identifiers)
       expect(parsed_body["finalize"]).to match(%r{http://.+/orders/[0-9]+/finalize})
+    end
+
+    it "rejects EC keys with an unsupported curve" do
+      # The error should occur during key parsing, before signature verification
+      jwk = {
+        typ: "JWT",
+        alg: "ES256",
+        jwk: {
+          kty: "EC",
+          crv: "P-999",
+          x: acme_base64("x" * 32),
+          y: acme_base64("y" * 32)
+        }
+      }.to_json
+      encoded_jwk = acme_base64(jwk)
+      payload = {
+        contact: ["mailto:#{account_email}"]
+      }.to_json
+      encoded_payload = acme_base64(payload)
+
+      body = {
+        protected: encoded_jwk,
+        payload: encoded_payload,
+        signature: acme_base64("dummy_signature")
+      }.to_json
+
+      post "/accounts", body, { "CONTENT_TYPE" => "application/jose+json" }
+
+      expect(last_response.status).to eq(400)
+      expect(last_response.headers["Content-Type"]).to eq("application/problem+json")
+
+      parsed_body = JSON.parse(last_response.body)
+      expect(parsed_body["type"]).to eq("urn:ietf:params:acme:error:badPublicKey")
+      expect(parsed_body["detail"]).to include("P-999")
     end
 
     it "rejects Ed448 with badPublicKey error" do

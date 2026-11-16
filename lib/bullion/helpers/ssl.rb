@@ -38,7 +38,11 @@ module Bullion
         OpenSSL::PKey::RSA.new(outer_sequence.to_der)
       end
 
-      def key_data_to_ecdsa(key_data)
+      # Maps a JWK "crv" name to an OpenSSL curve name. RFC 7518 requires
+      # that an unknown or unsupported curve be rejected as a bad public
+      # key, never as an unhandled exception.
+      # @see https://tools.ietf.org/html/rfc7518#page-30
+      def ec_curve_name(crv)
         crv_mapping = {
           "P-256" => "prime256v1",
           "secp256k1" => "secp256k1",
@@ -46,10 +50,18 @@ module Bullion
           "P-521" => "secp521r1"
         }
 
+        curve_name = crv_mapping[crv]
+        return curve_name if curve_name
+
+        raise Bullion::Acme::Errors::BadPublicKey,
+              "Unsupported EC curve: #{crv.inspect}; " \
+              "supported curves are #{crv_mapping.keys.join(", ")}"
+      end
+
+      def key_data_to_ecdsa(key_data)
         x = base64_to_octet(key_data["x"])
         y = base64_to_octet(key_data["y"])
-        curve_name = crv_mapping[key_data["crv"]]
-        raise "Unknown curve" unless curve_name
+        curve_name = ec_curve_name(key_data["crv"])
 
         key_group = OpenSSL::PKey::EC::Group.new(curve_name)
         key_point = ec_point_from_jwk(key_group, x, y)

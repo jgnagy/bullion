@@ -267,13 +267,13 @@ module Bullion
         validate_order_nb_and_na(hash["notBefore"], hash["notAfter"])
 
         # Don't approve empty orders
-        raise Bullion::Acme::Errors::InvalidOrder, "Empty order!" if hash["identifiers"].empty?
+        raise Bullion::Acme::Errors::Malformed, "Empty order!" if hash["identifiers"].empty?
 
         order_domains = hash["identifiers"].select { it["type"] == "dns" }
 
         # Don't approve an order with identifiers that _aren't_ of type 'dns'
         unless hash["identifiers"] == order_domains
-          raise Bullion::Acme::Errors::InvalidOrder, 'Only type "dns" allowed'
+          raise Bullion::Acme::Errors::UnsupportedIdentifier, 'Only type "dns" allowed'
         end
 
         # Extract domains that end with something in our allowed domains list
@@ -282,7 +282,7 @@ module Bullion
         # Only allow configured domains...
         unless order_domains == valid_domains
           raise(
-            Bullion::Acme::Errors::InvalidOrder,
+            Bullion::Acme::Errors::RejectedIdentifier,
             "Domains #{order_domains - valid_domains} not allowed"
           )
         end
@@ -303,16 +303,18 @@ module Bullion
         na = Time.parse(not_after)
 
         # don't allow nonsense certs
-        raise Bullion::Acme::Errors::InvalidOrder unless nb < na
+        raise Bullion::Acme::Errors::Malformed, "notBefore must be before notAfter" unless nb < na
         # don't allow far-future certs
         if nb > Time.now + (7 * 86_400) || na > Time.now + Bullion.config.ca.cert_validity_duration
-          raise Bullion::Acme::Errors::InvalidOrder
+          raise Bullion::Acme::Errors::Malformed, "notBefore/notAfter outside the allowed window"
         end
 
         # don't allow really "old" certs
-        raise Bullion::Acme::Errors::InvalidOrder if nb < Time.now - (14 * 86_400)
+        if nb < Time.now - (14 * 86_400)
+          raise Bullion::Acme::Errors::Malformed, "notBefore is too far in the past"
+        end
         # don't allow creating certs that are already expired
-        raise Bullion::Acme::Errors::InvalidOrder if na <= Time.now
+        raise Bullion::Acme::Errors::Malformed, "notAfter is in the past" if na <= Time.now
       end
       # rubocop:enable Metrics/AbcSize
       # rubocop:enable Metrics/CyclomaticComplexity

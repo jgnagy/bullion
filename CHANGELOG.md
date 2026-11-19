@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.12.2](https://github.com/jgnagy/bullion/compare/bullion/v0.12.1...bullion/v0.12.2) (2026-11-19)
+
+
+### Bug Fixes
+
+* address review findings on ACME error responses ([0cd7a03](https://github.com/jgnagy/bullion/commit/0cd7a032f1c7854b49f6aa5965aca1e442b029b8))
+* return ACME problem+json errors from the CA service ([bba9382](https://github.com/jgnagy/bullion/commit/bba9382d5f90675d7991446477eddab19e1c869e))
+* return ACME problem+json errors from the CA service ([b595460](https://github.com/jgnagy/bullion/commit/b595460b8df8e33f6ac5a2db789fc6f0ba417a87)), closes [#110](https://github.com/jgnagy/bullion/issues/110)
+
 ## [0.12.1](https://github.com/jgnagy/bullion/compare/bullion/v0.12.0...bullion/v0.12.1) (2026-11-02)
 
 
